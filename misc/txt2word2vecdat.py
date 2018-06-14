@@ -15,7 +15,7 @@ if __name__=='__main__':
     ap.add_argument('file',type=open,metavar='FILE',help='1行1文')
     ap.add_argument('--stem','-s',action='store_true',help='動詞，形容詞を基本形に戻す')
     ap.add_argument('--pos','-p',action='store_true',help='品詞情報付き')
-    ap.add_argument('--mecabopt','-m',type=str,metavar='STRING',help='mecabのオプション',default='')
+    ap.add_argument('--mecabopt',type=str,metavar='STRING',help='mecabのオプション',default='')
     args=ap.parse_args()
 
     tagger=MeCab.Tagger(args.mecabopt)
@@ -24,32 +24,21 @@ if __name__=='__main__':
         ln=ln.rstrip()
         ln=re.sub('^　','',ln)
         morphs=re.split('\n',tagger.parse(ln).rstrip())
-        morphs.pop() # EOS
-        word=[]
-        pos=[]
+        morphs.pop()
+        result=[]
         for m in morphs:
             line=re.split('\t',m)
             features=re.split(',',line[1])
-            sur=line[0]
             if args.stem and re.match('動詞|形容詞',features[0]):
-                sur=features[6]
-            # resultの最後とくっつけるやつ
-            # - 名詞・サ変接続+動詞・サ変・スル
-            if pos!=[] and pos[-1]=='名詞-サ変接続' and features[4]=='サ変・スル':
-                word[-1]+=sur
-                pos[-1]='動詞'
-            else:
-                word.append(sur)
-                ps=features[0]
-                if features[0]=='名詞' and features[1]=='サ変接続':
-                    ps+='-'+features[1]
-                pos.append(ps)
-        result=[]
-        for i in range(len(word)):
+                result.append(features[6])
             if args.pos:
-                result.append(word[i]+'-'+pos[i])
+                base=line[0]
+                if features[6] != '*':
+                    base=features[6]
+                pos=features[0]
+                if re.match('動詞|形容詞|助動詞',features[0]):
+                    pos+='-'+features[4]
+                result.append(base+'-'+pos)
             else:
-                result.append(word[i])
-
+                result.append(line[0])
         print(' '.join(result))
-        

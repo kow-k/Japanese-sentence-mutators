@@ -117,7 +117,7 @@ if __name__=='__main__':
     import argparse
     # コマンドラインオプション
     ap=argparse.ArgumentParser(description="品詞を固定した単語単位の置換")
-    ap.add_argument('--bin',type=str,metavar='bin',help='word2vec model',default='bccwj.pos.bin')
+    ap.add_argument('--bin',type=str,metavar='bin',help='word2vec model',default='jawiki.pos.bin')
     ap.add_argument('--debug',action='store_true',help=' debug')
     ap.add_argument('--lb',type=float,help='類似度の下限 (0~1)',default=0)
     ap.add_argument('--ub',type=float,help='類似度の上限 (0~1)',default=1)

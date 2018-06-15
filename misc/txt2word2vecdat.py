@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # coding: utf-8
 
 import os
@@ -19,7 +19,7 @@ if __name__=='__main__':
     args=ap.parse_args()
 
     tagger=MeCab.Tagger(args.mecabopt)
-    
+
     for ln in args.file:
         ln=ln.rstrip()
         ln=re.sub('^　','',ln)

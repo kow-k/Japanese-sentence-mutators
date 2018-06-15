@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # coding: utf-8
 # Wikipediaダンプデータから抽出したテキストを1行1文の形式にする
 import os
@@ -29,5 +30,5 @@ if __name__=='__main__':
             ln=re.sub('。','。\n',ln)
             ln=ln.rstrip()
             print(ln)
-    
-                
+
+### end of program

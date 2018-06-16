@@ -12,16 +12,22 @@
 ## 必要な word2vec データ
 動作には gensim の word2vec が参照する単語類似度データが必要．データの獲得法は次の2つ:
 
-1. 自作する: misc にあるスクリプトを使って Wikipedia の dump から構築する．
+1. 構築済みの [jawiki.pos.bin](https://www.dropbox.com/s/h9hy87hjqn5v3xj/jawiki.pos.bin?dl=1) データ (約200MB) を入手する．
+2. 自作する: misc にあるスクリプトを使って Wikipedia の dump から構築する．
 方法は misc/README の参照の事．モデルファイルの名称は jawiki.pos.bin とする．
-2. 構築済みの [jawiki.pos.bin](https://www.dropbox.com/s/h9hy87hjqn5v3xj/jawiki.pos.bin?dl=1) データを私たちから入手する．
-3. 国立国語研究所が提供している日本語書き言葉均衡コーパス [BCCWJ](http://pj.ninjal.ac.jp/corpus_center/bccwj/) をライセンスを受けて利用している方には私たちが構築した単語類似度データの提供が可能．問い合わせ先は japanese#acceptability#ratings&gmail#com (# を . に，& を @ に変換)．
+
+なお，国立国語研究所が提供している日本語書き言葉均衡コーパス [BCCWJ](http://pj.ninjal.ac.jp/corpus_center/bccwj/) をライセンスを受けて利用している方には私たちが構築した単語類似度データの提供が可能．問い合わせ先は japanese#acceptability#ratings&gmail#com (# を . に，& を @ に変換)．
 
 ## changewords.py
 (突然変異とのアナロジーで)入力文中の単語1語をランダムに別の語に置き換える．
 
-- どの品詞の語を変異するかは --pos で指定．0 で名詞を (デフォールトの動作)，
-1 で動詞を，2 で形容詞を，3 で副詞を，4 で格助詞を．使用例 (入力文の指定されたテキストを TEXT とする):
+- どの品詞の語を変異するかは --pos で指定．
+名詞 (形容動詞の語幹を含む) のみを変換させるには --pos 0，
+動詞 (助動詞は含まない) のみを変換させるには --pos 1，
+形容詞のみを変換させるには --pos 2，
+副詞のみを変換させるには --pos 3，
+格助詞のみを変換させるには --pos 4 とする．使用例 (入力文の指定されたテキストを TEXT とする):
+
     ```
     cat TEXT | ./changewords.py --pos 1 # 動詞をランダムに一つ選んで置換
     ```
@@ -32,18 +38,21 @@
 ただし格助詞の変更のみ，類似度を使わないで疑似的に頻度を反映したランダム変異としている．
 
 - 単語の置換は1度に1個だけだが，--repeat n で再帰的に n回反復する．使用例:
+
     ```
     cat TEXT | ./changewords.py --pos 2 --repeat 10 # 形容詞をランダムに一つ選んで置換する処理を10回繰り返す
     ```
 
-- --silent で入力文の反復を禁止 (デフォールトでは入力文を [original] のタグつきで再生)．
+- --silent で入力文の表示を禁止 (デフォールトでは入力文を [original] のタグつきで再生)．
+
 - どの語に置き換えるかは Wikipedia (か BCCWJ) から学習して構築した word2vec のモデルから選ぶ．
 モデルファイルは --bin で指定 (デフォールトは jawiki.pos.bi)．使用例 (入力文の指定されたテキストを TEXT とする)::
+
     ```
     cat TEXT | ./changewords.py --bin bccwj.pos.bin
     ```
 
-100回探して該当するものが見つからなかった場合は諦める．この場合，
+100回探して該当するものが見つからなかった場合は諦める．この場合:
 
     ```
     # Alert: No mutation was made.
@@ -73,6 +82,7 @@
 連体修飾など中の要素の順番は入れ替わらない)．
 
 - --start i, --end j オプションで入れ替えの範囲を i番目の分節から j番目の文節の範囲に限定する．使用例 (入力文の指定されたテキストを TEXT とする):
+
     ```
     cat TEXT | ./swapphrases.py --start 2 # 最初の文節 (~=phrase) をかき混ぜの対象から除く
     ```
@@ -86,7 +96,6 @@
     ```
     cat TEXT | ./reducephrases.py --lb 3 % 少なくとも3つの文節を残す
     ```
-
 
 - --exclude_wa で「は」で終わる節を削除対象から除外．
 

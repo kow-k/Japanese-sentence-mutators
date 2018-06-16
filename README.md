@@ -14,7 +14,7 @@
 
 1. 構築済みの [jawiki.pos.bin](https://www.dropbox.com/s/h9hy87hjqn5v3xj/jawiki.pos.bin?dl=1) データ (約200MB) を入手する．
 2. 自作する: misc にあるスクリプトを使って Wikipedia の dump から構築する．
-方法は misc/README の参照の事．モデルファイルの名称は jawiki.pos.bin とする．
+方法は misc/README.md を参照の事．モデルファイルの名称は jawiki.pos.bin とする．
 
 なお，国立国語研究所が提供している日本語書き言葉均衡コーパス [BCCWJ](http://pj.ninjal.ac.jp/corpus_center/bccwj/) をライセンスを受けて利用している方には私たちが構築した単語類似度データの提供が可能．問い合わせ先は japanese#acceptability#ratings&gmail#com (# を . に，& を @ に変換)．
 
@@ -53,7 +53,6 @@
     ```
 
 100回探して該当するものが見つからなかった場合は諦める．この場合:
-
     ```
     # Alert: No mutation was made.
     ```

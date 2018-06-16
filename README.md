@@ -12,7 +12,8 @@
 ## 必要な word2vec データ
 動作には gensim の word2vec が参照する単語類似度データが必要．データの獲得法は次の2つ:
 
-- (1) 自作する: misc にあるスクリプトを使って Wikipedia の dump から構築する．名称は jawiki.pos.bin とする．
+- (1) 自作する: misc にあるスクリプトを使って Wikipedia の dump から構築する．
+方法は misc/README の参照の事．モデルファイルの名称は jawiki.pos.bin とする．
 - (2) 構築済みのデータを私たちから入手する．問い合わせ先は japanese#acceptability#ratings&gmail#com (# を . に，& を @ に変換)．なお，BCCWJ をライセンスを受けて利用している方には，希望により BCCWJ から構築した単語類似度データの提供が可能．
 
 ## changewords.py

@@ -1,5 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+# Copyright (C) 2016-2018 Kow Kuroda
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 #
 # created by Hikaru Yokono (yokono.hikaru@jp.fujitsu.com).
 #
@@ -10,6 +26,8 @@
 # 4. 変異の対象を名詞，動詞，形容詞，副詞，格助詞に [--pos で選択] (2017/04/14)
 #    課題1: 活用形の処理は現状ではado hoc．
 #    課題2: 重みづけの扱いの現状はおもちゃなので，ちゃんとやった方が良い．
+
+
 
 import os
 import sys

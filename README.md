@@ -108,3 +108,8 @@
 文法性を保証したいなら，sed などを使った後処理が必要．
 - 真性の名詞と UniDicで名詞扱いされている形容動詞語幹との区別ができていない．
 - その他の幾つかのエラー処理は未実装．
+
+## Copyrights
+Copyright (C) 2016-2018 Kow Kuroda All rights reserved.
+
+スクリプトのライセンスは Apache License, Version 2.0 です．

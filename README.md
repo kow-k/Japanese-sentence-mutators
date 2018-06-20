@@ -16,12 +16,12 @@
 2. 自作する: misc にあるスクリプトを使って Wikipedia の dump から構築する．
 方法は misc/README.md を参照の事．モデルファイルの名称は jawiki.pos.bin とする．
 
-なお，国立国語研究所が提供している日本語書き言葉均衡コーパス [BCCWJ](http://pj.ninjal.ac.jp/corpus_center/bccwj/) をライセンスを受けて利用している方には私たちが構築した単語類似度データの提供が可能．問い合わせ先は japanese#acceptability#ratings&gmail#com (# を . に，& を @ に変換)．
+なお，国立国語研究所が提供している [日本語書き言葉均衡コーパス (BCCWJ)](http://pj.ninjal.ac.jp/corpus_center/bccwj/) をライセンスを受けて利用している方には私たちが構築した単語類似度データの提供が可能．問い合わせ先は japanese#acceptability#ratings&gmail#com (# を . に，& を @ に変換)．
 
 ## changewords.py
 (突然変異とのアナロジーで)入力文中の単語1語をランダムに別の語に置き換える．
 
-- どの品詞の語を変異するかは --pos で指定．
+- どの品詞の語を変異するかは --pos で指定する:
 名詞 (形容動詞の語幹を含む) のみを変換させるには --pos 0，
 動詞 (助動詞は含まない) のみを変換させるには --pos 1，
 形容詞のみを変換させるには --pos 2，

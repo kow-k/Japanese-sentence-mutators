@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2016-2018 Kow Kuroda
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -43,6 +43,7 @@ from collections import defaultdict
 ## Kow Kuroda added the following 17 lines on 2017/02/22, 23
 import io
 out_enc = in_enc = "utf-8"
+headersep  = ":"
 sys.stdin  = io.TextIOWrapper(sys.stdin.buffer, encoding=in_enc)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=out_enc)
 case_markers = ['が', 'を', 'に', 'で', 'から', 'と', 'へ', 'まで', 'によって']
@@ -54,7 +55,13 @@ def weighted_random_choice(W, C):
 	'''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
 	(0.0 < r < 1.0) で疑似的に重みづけする
 	'''
+    if args.debug:
+        print("len(W)=%s: %s" % (len(W), W))
+        print("len(C)=%s: %s" % (len(C), C))
+    try:
 	assert len(W) > len(C)
+    except AssertionError:
+        return random.choice(C)
 	if args.debug:
 		print("# input for weighted random choice: "); print(C)
 	R = [ ]; M = [ ]
@@ -141,11 +148,12 @@ if __name__=='__main__':
     ap.add_argument('--ub',type=float,help='類似度の上限 (0~1)',default=1)
     ## Kow Kuroda added the following three arguments.
     ap.add_argument('--repeat',type=int,help='反復回数',default=1)
-    ap.add_argument('--silent',action='store_true',help='入力の再表示')
+    ap.add_argument('--silent',action='store_true',help='入力の非表示')
     ap.add_argument('--show_similars',action='store_true',help='類似語の表示')
     ap.add_argument('--pos',type=int,choices=list(range(0,5)),help='変異対象(0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞)',default=0)
     ap.add_argument('--katsuyou',type=argparse.FileType('r',encoding=in_enc),help='活用語尾リスト (default:katsuyou.csv)',default='katsuyou.csv')
     ap.add_argument('--no_hiragana',action='store_true',help='平仮名表記への置換を抑制')
+    ap.add_argument('--headersep',type=str,help='ヘッダーの区切り記号',default=':')
     args=ap.parse_args()
 
     # 活用語尾リストの読み込み
@@ -168,6 +176,11 @@ if __name__=='__main__':
             if args.debug:      print('Input : ' + inp)
             if not args.silent:
             	print(inp + '[original]')
+            # headerの分離
+            try:
+                header, inp = inp.split(headersep)
+            except ValueError:
+                header = ""; headersep = ""
             result = inp
             r = args.repeat # r は世代に相当
             while r > 0:
@@ -282,7 +295,7 @@ if __name__=='__main__':
                     #print(u'ERROR: Could not find candidate.')
                     print('# Alert: No mutation was made')
                 result = reunion(words,katsuyou)
-                print(result)
+                print(header + headersep + result)
     #           print(str(cand[1])+'\t'+''.join(words))
     except EOFError:
         pass

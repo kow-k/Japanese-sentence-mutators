@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2016-2018 Kow Kuroda
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -33,6 +33,7 @@ import CaboCha
 
 import io
 out_enc = in_enc = "utf-8"
+headersep  = ":"
 sys.stdin  = io.TextIOWrapper(sys.stdin.buffer, encoding=in_enc)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=out_enc)
 
@@ -45,8 +46,9 @@ if __name__=='__main__':
     ap.add_argument('--end',type=int,help='順序替えの範囲(終点)',default=0)
     ## Kow Kuroda added the following three arguments.
     ap.add_argument('--repeat',type=int,help='反復回数',default=1)
-    ap.add_argument('--silent',action='store_true',help='入力の再表示')
+    ap.add_argument('--silent',action='store_true',help='入力の非表示')
     ap.add_argument('--displace',type=int,help='スワップの回数(default 1)',default=1)
+    ap.add_argument('--headersep',type=str,help='ヘッダーの区切り記号',default=':')
     args=ap.parse_args()
     cab=CaboCha.Parser('-f1')
 
@@ -60,6 +62,11 @@ if __name__=='__main__':
                 print('Input : '+inp)
             if not args.silent:
             	print(inp + '[original]')
+            # headerの分離
+            try:
+                header, inp = inp.split(headersep)
+            except ValueError:
+                header = ""; headersep = ""
             result = inp
             r = args.repeat # r は世代に相当
             while r > 0:
@@ -106,7 +113,7 @@ if __name__=='__main__':
                 if args.debug:
                     print('swap target:',phrase)
                     print('swap list:',idx)
-                
+
                 pnt=0
                 for n in range(0,times):
                     temp=phrase[idx[pnt]]
@@ -115,7 +122,7 @@ if __name__=='__main__':
                     pnt+=2
                 if args.debug:
                     print('swap result:',phrase)
-                
+
                 # pred=phrase.pop()
                 # start=args.start
                 # end=0
@@ -133,8 +140,7 @@ if __name__=='__main__':
                 # phrase[swap2]=temp
                 # 結果の表示
                 result=''.join(phrase)+pred
-                print(result)
-
+                print(header + headersep + result)
                 # 置き換え
 
     except EOFError:

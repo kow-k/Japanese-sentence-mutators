@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2016-2018 Kow Kuroda
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -27,6 +27,7 @@ from itertools import combinations
 
 import io
 out_enc = in_enc = "utf-8"
+headersep  = ":"
 sys.stdin  = io.TextIOWrapper(sys.stdin.buffer, encoding=in_enc)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=out_enc)
 
@@ -37,6 +38,8 @@ if __name__=='__main__':
     ap.add_argument('--debug',action='store_true',help='debug')
     ap.add_argument('--exclude_wa',action='store_true',help='"NPは"は削除しない')
     ap.add_argument('--lb',type=int,help='除去して残る句の数の下限(default:2)',default=2)
+    ap.add_argument('--silent',action='store_true',help='入力の非表示')
+    ap.add_argument('--headersep',type=str,help='ヘッダーの区切り記号',default=':')
     args=ap.parse_args()
     cab=CaboCha.Parser('-f1')
 
@@ -46,7 +49,13 @@ if __name__=='__main__':
             inp=input().rstrip()
             if args.debug:
                 print('Input : '+inp)
-
+            if not args.silent:
+                print(inp + '[original]')
+            # headerの分離
+            try:
+                header, inp = inp.split(headersep)
+            except ValueError:
+                header = ""; headersep = ""
             cabocha=cab.parseToString(inp)
             sentence=Struc.structure(cabocha)
             target=sentence[len(sentence)-1]['deps']
@@ -57,7 +66,7 @@ if __name__=='__main__':
                     line=re.split('\t',m)
                     temp+=line[0]
                 phrase.append(temp)
-                                
+
             for i in range(len(phrase)):
                 if i not in target and i != len(phrase)-1:
                     phrase[sentence[i]['link']]=phrase[i]+phrase[sentence[i]['link']]
@@ -75,17 +84,17 @@ if __name__=='__main__':
                         phraseidx.append(i)
                 else:
                     phraseidx.append(i)
-            
- 
+
+
             # 削除する項を一つずつ増やしていく
             # 終了条件
             end=args.lb
-            
+
             c=1
             if args.debug:
                 print('Phrases:',phrase)
                 print('Reduce Candidates:',phraseidx)
-                
+
             while True:
                 if len(phrase)-c<end: break
 
@@ -97,9 +106,9 @@ if __name__=='__main__':
                     for i in range(0,len(phrase)):
                         if not i in r:
                             result.append(phrase[i])
-                    print(''.join(result)+pred)
+                    print(header+headersep+ ''.join(result)+pred)
                 c+=1
-            
+
 
     except EOFError:
         pass

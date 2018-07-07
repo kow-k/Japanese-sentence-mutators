@@ -52,26 +52,27 @@ case_factors = [ 0.2,  0.2,  0.3,  0.2,   0.1,  0.1, 0.05,  0.05,       0.05]
 targetpos = ['名詞', '動詞', '形容詞', '副詞', '格助詞']
 
 def weighted_random_choice(W, C):
-	'''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
-	(0.0 < r < 1.0) で疑似的に重みづけする
-	'''
+    '''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
+    (0.0 < r < 1.0) で疑似的に重みづけする
+    '''
+
     if args.debug:
         print("len(W)=%s: %s" % (len(W), W))
         print("len(C)=%s: %s" % (len(C), C))
     try:
-	assert len(W) > len(C)
+        assert len(W) > len(C)
     except AssertionError:
         return random.choice(C)
-	if args.debug:
-		print("# input for weighted random choice: "); print(C)
-	R = [ ]; M = [ ]
-	for i, x in enumerate(C):
-		for j in range(int(100 * W[i])):
-			M.append(x)
-		R.extend(M)
-	if args.debug:
-		print("# candidates for weighted random choice: "); print(R)
-	return random.choice(R)
+    if args.debug:
+        print("# input for weighted random choice: "); print(C)
+    R = [ ]; M = [ ]
+    for i, x in enumerate(C):
+        for j in range(int(100 * W[i])):
+            M.append(x)
+        R.extend(M)
+    if args.debug:
+        print("# candidates for weighted random choice: "); print(R)
+    return random.choice(R)
 
 def replace(words,position,cand):
     '''

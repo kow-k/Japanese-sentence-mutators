@@ -96,8 +96,7 @@ if __name__=='__main__':
                 print('Reduce Candidates:',phraseidx)
 
             while True:
-                if len(phrase)-c<end: break
-
+                if len(phrase) - c < end: break
                 if args.debug:
                     print('## delete',c,'phrase(s)')
                 rests=combinations(phraseidx,c)
@@ -106,7 +105,11 @@ if __name__=='__main__':
                     for i in range(0,len(phrase)):
                         if not i in r:
                             result.append(phrase[i])
-                    print(header+headersep+ ''.join(result)+pred)
+                    text = ''.join(result)+pred
+                    if args.silent:
+                        print(header + headersep + text)
+                    else:
+                        print(header + headersep + text + "[reduced %d phrase(s)]" % c)
                 c+=1
 
 

@@ -69,8 +69,9 @@ if __name__=='__main__':
                 header = ""; headersep = ""
             result = inp
             r = args.repeat # r は世代に相当
-            while r > 0:
-                r-=1
+            d = r
+            while d > 0:
+                d-=1
                 inp = result
                 cabocha=cab.parseToString(inp)
                 sentence=Struc.structure(cabocha)
@@ -140,7 +141,10 @@ if __name__=='__main__':
                 # phrase[swap2]=temp
                 # 結果の表示
                 result=''.join(phrase)+pred
-                print(header + headersep + result)
+                if args.silent:
+                    print(header + headersep + result)
+                else:
+                    print(header + headersep + result + "[with %d swaps]" % (r - d))
                 # 置き換え
 
     except EOFError:

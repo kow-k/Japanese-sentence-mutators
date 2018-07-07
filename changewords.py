@@ -50,6 +50,7 @@ case_markers = ['が', 'を', 'に', 'で', 'から', 'と', 'へ', 'まで', '�
 case_factors = [ 0.2,  0.2,  0.3,  0.2,   0.1,  0.1, 0.05,  0.05,       0.05]
 # 変異対象の品詞
 targetpos = ['名詞', '動詞', '形容詞', '副詞', '格助詞']
+postags   = {0: "N", 1: "V", 2: "Adj", 3: "Adv", 4: "Marker"}
 
 def weighted_random_choice(W, C):
     '''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
@@ -184,8 +185,9 @@ if __name__=='__main__':
                 header = ""; headersep = ""
             result = inp
             r = args.repeat # r は世代に相当
-            while r > 0:
-                r-=1
+            d = r
+            while d > 0:
+                d-=1
                 inp = result
                 morphs=re.split(u'\n',cab.parseToString(inp))
                 morphs=[x for x in morphs if not re.match(u'\* ',x)]
@@ -296,7 +298,10 @@ if __name__=='__main__':
                     #print(u'ERROR: Could not find candidate.')
                     print('# Alert: No mutation was made')
                 result = reunion(words,katsuyou)
-                print(header + headersep + result)
+                if args.silent:
+                    print(header + headersep + result)
+                else:
+                    print(header + headersep + result + "[with %d change(s) on %s]" % ((r - d), postags[args.pos]) )
     #           print(str(cand[1])+'\t'+''.join(words))
     except EOFError:
         pass

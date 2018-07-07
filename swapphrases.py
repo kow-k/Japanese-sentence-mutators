@@ -141,7 +141,7 @@ if __name__=='__main__':
                 # phrase[swap2]=temp
                 # 結果の表示
                 text=''.join(phrase)+pred
-                print(header + headersep + text + "[with %d swaps]" % (r - d))
+                print(header + headersep + text + "[with %d swap(s)]" % (r - d))
                 # 置き換え
 
     except EOFError:

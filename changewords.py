@@ -297,11 +297,8 @@ if __name__=='__main__':
                 if flag==1:
                     #print(u'ERROR: Could not find candidate.')
                     print('# Alert: No mutation was made')
-                result = reunion(words,katsuyou)
-                if args.silent:
-                    print(header + headersep + result)
-                else:
-                    print(header + headersep + result + "[with %d change(s) on %s]" % ((r - d), postags[args.pos]) )
+                text = reunion(words,katsuyou)
+                print(header + headersep + text + "[with %d change(s) on %s]" % ((r - d), postags[args.pos]) )
     #           print(str(cand[1])+'\t'+''.join(words))
     except EOFError:
         pass

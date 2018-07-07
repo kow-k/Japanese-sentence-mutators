@@ -106,10 +106,7 @@ if __name__=='__main__':
                         if not i in r:
                             result.append(phrase[i])
                     text = ''.join(result)+pred
-                    if args.silent:
-                        print(header + headersep + text)
-                    else:
-                        print(header + headersep + text + "[reduced %d phrase(s)]" % c)
+                    print(header + headersep + text + "[reduced %d phrase(s)]" % c)
                 c+=1
 
 

@@ -140,11 +140,8 @@ if __name__=='__main__':
                 # phrase[swap1]=phrase[swap2]
                 # phrase[swap2]=temp
                 # 結果の表示
-                result=''.join(phrase)+pred
-                if args.silent:
-                    print(header + headersep + result)
-                else:
-                    print(header + headersep + result + "[with %d swaps]" % (r - d))
+                text=''.join(phrase)+pred
+                print(header + headersep + text + "[with %d swaps]" % (r - d))
                 # 置き換え
 
     except EOFError:

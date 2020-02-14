@@ -75,38 +75,39 @@ def weighted_random_choice(W, C):
 		print("# candidates for weighted random choice: %s" % R)
 	return random.choice(R)
 
-def replace(words,position,cand):
+def replace(words, position, cand):
 	'''
-	wordsのpositionの位置の単語をcandに置き換える
-	wordsの方には活用形まで入っているけど，candは原形なので，活用形の情報をcandに渡す
+	words の position の位置の単語を cand に置き換える
+	words の方には活用形まで入っているけど，cand は原形なので，活用形の情報を cand に渡す
 	'''
-	temp=re.split('-', words[position])
+	temp = re.split('-', words[position])
 	if re.match('動詞|形容詞|助動詞', temp[1]):
 		cand += '-' + temp[len(temp) - 1]
 	words[position] = cand
 	return words
 
-def reunion(words, katsuyoulist):
+def reunion(words, inflections):
 	'''
 	形態素列を文に戻す
 	原形は活用させる
 	'''
-	result=''
+
+	result = ''
 	for i in range(len(words)):
 			elem = re.split('-', words[i])
 			if re.match('動詞|形容詞|助動詞', elem[1]):
-					kihon = katsuyoulist[elem[2]]['基本形']
+					kihon = inflections[elem[2]]['基本形']
 					pat = re.compile(kihon + '$')
 					base = pat.sub('', elem[0])
 					# 活用形のずれの ad hocな対応
 					# 助動詞たか接続助詞ての前にある用言を，活用に連用タ接続があればそっちに，なければ連用形にする
 					if i < len(words) - 1 and re.search('(-助動詞-特殊・タ|て-助詞)', words[i+1]):
-						if elem[3] == '連用形' and '連用タ接続' in katsuyoulist[elem[2]]:
+						if elem[3] == '連用形' and '連用タ接続' in inflections[elem[2]]:
 							elem[3] = '連用タ接続'
-						elif elem[3] == '連用タ接続' and '連用タ接続' not in katsuyoulist[elem[2]] and '連用形' in katsuyoulist[elem[2]]:
+						elif elem[3] == '連用タ接続' and '連用タ接続' not in inflections[elem[2]] and '連用形' in inflections[elem[2]]:
 							elem[3] = '連用形'
-					if len(elem) == 4 and elem[3] in katsuyoulist[elem[2]]:
-						result += base + katsuyoulist[elem[2]][elem[3]]
+					if len(elem) == 4 and elem[3] in inflections[elem[2]]:
+						result += base + inflections[elem[2]][elem[3]]
 					else:
 						# 変異予定の語が求められている活用形を持たない場合，原形を返してみる
 						# 名詞-形容動詞語幹を形容詞に置き換えるとかで発生する
@@ -168,26 +169,33 @@ if __name__=='__main__':
 	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
 	ap.add_argument('--silent', action = 'store_true', help = '入力の非表示')
 	ap.add_argument('--show_similars', action = 'store_true', help = '類似語の表示')
-	ap.add_argument('--pos', type = int, choices = list(range(0,6)), help = '変異対象(0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞, 5:形容動詞)', default = 0)
-	ap.add_argument('--katsuyou', type = argparse.FileType('r', encoding = in_enc), help = '活用語尾リスト (default:katsuyou.csv)', default = 'katsuyou.csv')
+	ap.add_argument('--pos', type = int, choices = list(range(0,6)), help = '変異対象 (0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞, 5:形容動詞)', default = 0)
+	ap.add_argument('--exclude_PredN', action = 'store_true', help = '形容動詞を非名詞扱い')
+	ap.add_argument('--extend_V', action = 'store_true', help = 'サ変名詞を動詞扱い')
+	ap.add_argument('--extend_Adv', action = 'store_true', help = '形容詞を副詞扱い')
 	ap.add_argument('--no_hiragana', action = 'store_true', help = '平仮名表記への置換を抑制')
+	ap.add_argument('--inflection', type = argparse.FileType('r', encoding = in_enc), help = '活用語尾リスト (default:katsuyou.csv)', default = 'katsuyou.csv')
 	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
 	ap.add_argument('--commentchar', type = str, help = 'コメント行の識別記号', default = '%')
 	#
 	args = ap.parse_args()
-
 	# 活用語尾リストの読み込み
-	katsuyou = defaultdict(lambda:defaultdict(str))
-	for ln in args.katsuyou:
+	inflection = defaultdict(lambda:defaultdict(str))
+	for ln in args.inflection:
 		ln = ln.rstrip()
 		if args.debug:
 			print(ln)
 		line = re.split(',', ln)
-		katsuyou[line[0]][line[1]] = line[2]
+		inflection[line[0]][line[1]] = line[2]
 
 	cab = CaboCha.Parser(u'-f1')
 	model = KeyedVectors.load_word2vec_format(args.bin, binary = True)
-
+	#
+	if   args.extend_V == True:
+		args.pos = 1
+	elif args.extend_Adv == True:
+		args.pos = 3
+	#
 	try:
 		if args.debug: print("encoding: %s" % sys.getdefaultencoding())
 		## Kow Kuroda modified the following routine on 2017/02/22, 2020/02/14
@@ -197,7 +205,8 @@ if __name__=='__main__':
 			inp = input().rstrip()
 			if args.debug: print('Input : ' + inp)
 			try:
-				if inp[0] == args.commentchar: ignored = True
+				if inp[0] == args.commentchar:
+					ignored = True
 			except IndexError:
 				ignored = True
 			if not args.silent:
@@ -226,17 +235,54 @@ if __name__=='__main__':
 					line = re.split('\t', morphs[i])
 					base = line[0]
 					features = re.split(',', line[1])
-					# 補助動詞(動詞-非自立)は置換対象にしない
-					if not (features[0] == '動詞' and features[1] == '非自立'):
-						# 格助詞と形容動詞は扱いが異なる
-						if targetpos[args.pos] == '格助詞':
+					# 名詞の扱い
+					if targetpos[args.pos] == '名詞':
+						if features[0] == targetpos[args.pos]:
+							if args.exclude_PredN == True: # 形容動詞語幹を除外
+								if re.search('動詞', features[1]):
+									pass
+								else:
+									positions.append(i)
+							else:
+								positions.append(i)
+					# 動詞の扱い
+					elif targetpos[args.pos] == '動詞':
+						# 補助動詞(動詞-非自立)は置換対象にしない
+						if features[1] == '非自立':
+							pass
+						# サ変名詞を動詞に含めるかどうか
+						if args.extend_V == True:
+							if features[0] == '名詞' and re.search('サ変', features[1]):
+								positions.append(i)
+							else:
+								if features[0] == targetpos[args.pos]:
+									positions.append(i)
+						else:
+							if features[0] == targetpos[args.pos]:
+								positions.append(i)
+					# 格助詞の扱い
+					elif targetpos[args.pos] == '格助詞':
+						if features[0] == targetpos[args.pos]:
 							if re.search('^(格|副)助詞$', features[1]):
 								positions.append(i)
-						elif targetpos[args.pos] == '形容動詞':
-							if re.search('^形容動詞', features[1]):
+					# 形容動詞
+					elif targetpos[args.pos] == '形容動詞':
+						if features[0] == targetpos[args.pos]:
+							if re.search('動詞', features[1]):
 								positions.append(i)
-						else:
-							if features[0] == targetpos[args.pos]: positions.append(i)
+							else:
+								pass
+					# 副詞
+					elif targetpos[args.pos] == '副詞':
+						if args.extend_Adv == True:
+							if features[0] == targetpos[args.pos] or features[0] == '形容詞':
+								positions.append(i)
+						if features[0] == targetpos[args.pos]:
+							positions.append(i)
+					# その他 (形容詞など) の扱い
+					else:
+						if features[0] == targetpos[args.pos]:
+							positions.append(i)
 					# 結果の生成
 					if features[6] != '*':
 						base = features[6]
@@ -320,7 +366,7 @@ if __name__=='__main__':
 						if cnt == 100:
 							flag = 1; break
 				#
-				text = reunion(words, katsuyou)
+				text = reunion(words, inflection)
 				if len(text) == 0:
 					pass
 				else:

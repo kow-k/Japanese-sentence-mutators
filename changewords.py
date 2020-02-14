@@ -166,10 +166,10 @@ if __name__=='__main__':
 	ap.add_argument('--lb', type = float, help = '類似度の下限 (0 ~ 1.0)', default = 0)
 	ap.add_argument('--ub', type = float, help = '類似度の上限 (0 ~ 1.0)', default = 1)
 	## Kow Kuroda added the following three arguments.
-	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
+	ap.add_argument('--repeat', type = int, help = '置換の反復回数', default = 1)
 	ap.add_argument('--silent', action = 'store_true', help = '入力の非表示')
 	ap.add_argument('--show_similars', action = 'store_true', help = '類似語の表示')
-	ap.add_argument('--pos', type = int, choices = list(range(0,6)), help = '変異対象 (0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞, 5:形容動詞)', default = 0)
+	ap.add_argument('--pos', type = int, choices = list(range(0,6)), help = '置換対象の品詞 PoS (0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞, 5:形容動詞)', default = 0)
 	ap.add_argument('--exclude_PredN', action = 'store_true', help = '形容動詞を非名詞扱い')
 	ap.add_argument('--extend_V', action = 'store_true', help = 'サ変名詞を動詞扱い')
 	ap.add_argument('--extend_Adv', action = 'store_true', help = '形容詞を副詞扱い')

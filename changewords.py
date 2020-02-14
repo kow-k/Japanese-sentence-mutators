@@ -45,11 +45,12 @@ out_enc      = in_enc = "utf-8"
 headersep    = ":"
 sys.stdin    = io.TextIOWrapper(sys.stdin.buffer, encoding=in_enc)
 sys.stdout   = io.TextIOWrapper(sys.stdout.buffer, encoding=out_enc)
-case_markers = ['が', 'を', 'に', 'で', 'から', 'と', 'へ', 'まで', 'によって']
-case_factors = [ 0.2,	 0.2,	 0.3,	 0.2,		0.1,	0.1, 0.05,	0.05,				0.05]
+case_markers = [ 'が', 'を', 'に', 'で', 'から', 'と',  'へ', 'まで', 'によって' ]
+case_factors = [  0.2, 0.1,  0.2,  0.2,   0.05,  0.1,  0.05,  0.05,      0.05 ]
+#case_factors = [ 0.2, 0.2,  0.3,  0.2,   0.1,   0.1,  0.05,  0.05,      0.05 ]
 # 変異対象の品詞
-targetpos   = ['名詞', '動詞', '形容詞', '副詞', '格助詞']
-postags     = {0: "N", 1: "V", 2: "Adj", 3: "Adv", 4: "P"}
+targetpos   = ['名詞', '動詞', '形容詞', '副詞', '格助詞', '形容動詞']
+postags     = { 0: "N", 1: "V", 2: "Adj", 3: "Adv", 4: "P", 5: "PredN" }
 
 def weighted_random_choice(W, C):
 	'''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
@@ -161,13 +162,13 @@ if __name__=='__main__':
 	ap = argparse.ArgumentParser(description = "品詞を固定した単語単位の置換")
 	ap.add_argument('--bin', type = str, metavar = 'bin', help = 'word2vec model', default = 'jawiki.pos.bin')
 	ap.add_argument('--debug', action = 'store_true', help = 'debug')
-	ap.add_argument('--lb', type = float, help = '類似度の下限 (0~1)', default = 0)
-	ap.add_argument('--ub', type = float, help = '類似度の上限 (0~1)', default = 1)
+	ap.add_argument('--lb', type = float, help = '類似度の下限 (0 ~ 1.0)', default = 0)
+	ap.add_argument('--ub', type = float, help = '類似度の上限 (0 ~ 1.0)', default = 1)
 	## Kow Kuroda added the following three arguments.
 	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
 	ap.add_argument('--silent', action = 'store_true', help = '入力の非表示')
 	ap.add_argument('--show_similars', action = 'store_true', help = '類似語の表示')
-	ap.add_argument('--pos', type = int, choices = list(range(0,5)), help = '変異対象(0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞)', default = 0)
+	ap.add_argument('--pos', type = int, choices = list(range(0,6)), help = '変異対象(0:名詞, 1:動詞, 2:形容詞, 3:副詞, 4:格助詞, 5:形容動詞)', default = 0)
 	ap.add_argument('--katsuyou', type = argparse.FileType('r', encoding = in_enc), help = '活用語尾リスト (default:katsuyou.csv)', default = 'katsuyou.csv')
 	ap.add_argument('--no_hiragana', action = 'store_true', help = '平仮名表記への置換を抑制')
 	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
@@ -176,15 +177,16 @@ if __name__=='__main__':
 	args = ap.parse_args()
 
 	# 活用語尾リストの読み込み
-	katsuyou=defaultdict(lambda:defaultdict(str))
+	katsuyou = defaultdict(lambda:defaultdict(str))
 	for ln in args.katsuyou:
-		ln=ln.rstrip()
-		if args.debug: print(ln)
-		line = re.split(',',ln)
-		katsuyou[line[0]][line[1]]=line[2]
+		ln = ln.rstrip()
+		if args.debug:
+			print(ln)
+		line = re.split(',', ln)
+		katsuyou[line[0]][line[1]] = line[2]
 
 	cab = CaboCha.Parser(u'-f1')
-	model = KeyedVectors.load_word2vec_format(args.bin,binary=True)
+	model = KeyedVectors.load_word2vec_format(args.bin, binary = True)
 
 	try:
 		if args.debug: print("encoding: %s" % sys.getdefaultencoding())
@@ -211,7 +213,7 @@ if __name__=='__main__':
 			while d > 0:
 				d -= 1
 				inp = result
-				morphs = re.split(u'\n',cab.parseToString(inp))
+				morphs = re.split(u'\n', cab.parseToString(inp))
 				morphs = [x for x in morphs if not re.match(u'\* ',x)]
 				positions = [ ] # <= 変数名を変更
 				words = [ ]
@@ -222,16 +224,20 @@ if __name__=='__main__':
 					if morphs[i] == u'EOS':
 						break
 					line = re.split('\t', morphs[i])
+					base = line[0]
 					features = re.split(',', line[1])
 					# 補助動詞(動詞-非自立)は置換対象にしない
 					if not (features[0] == '動詞' and features[1] == '非自立'):
-						# 格助詞だけ変異の仕方が異なる
+						# 格助詞と形容動詞は扱いが異なる
 						if targetpos[args.pos] == '格助詞':
-							if re.search('^格助詞$', features[1]): positions.append(i)
+							if re.search('^(格|副)助詞$', features[1]):
+								positions.append(i)
+						elif targetpos[args.pos] == '形容動詞':
+							if re.search('^形容動詞', features[1]):
+								positions.append(i)
 						else:
 							if features[0] == targetpos[args.pos]: positions.append(i)
 					# 結果の生成
-					base = line[0]
 					if features[6] != '*':
 						base = features[6]
 					pos = features[0]
@@ -240,25 +246,29 @@ if __name__=='__main__':
 					words.append(base + '-' + pos)
 				#
 				if args.debug:
-					print("# words: "); print(words)
-					print("# positions: "); print(positions)
+					print("# words: %s" % words)
+					print("# positions: %s" % positions)
+				#
+				if len(positions) == 0:
+					print("# detected no candidate for replacement")
+					break
 				# 場所決め
 				cnt  = 0 # 諦めカウンタ
 				flag = 0 # 諦めフラグ
 				while True:
 					# 変数名の変更: cand => mutant, mutant => cand; positions は位置のリスト
-					try: target = random.choice(positions)
+					try:
+						target = random.choice(positions) # selects target word
 					except IndexError: break
 					# 格助詞の変異を導入するために条件分枝を導入
 					if targetpos[args.pos] == '格助詞': # 格助詞の変異
 						C = [ x for x in case_markers if x + '-助詞' != words[target] ]
-						if args.debug:
-							print(C)
-						#mutant=random.choice(C)
+						if args.debug: print(C)
+						#mutant = random.choice(C)
 						mutant = weighted_random_choice(case_factors, C)
 						mutant += '-助詞'
 						if args.show_similars:
-							print("# " + words[target] + " is replaced by "+ mutant + " from:")
+							print("# " + words[target] + " is replaced by " + mutant + " from:")
 							print("# " + ", ".join(C))
 						# 置換
 						words = replace(words, target, mutant)
@@ -266,18 +276,21 @@ if __name__=='__main__':
 					else: # 格助詞の他の品詞の変異
 						elem = re.split('-', words[target])
 						query = elem[0] + '-' + elem[1]
-						if re.match('動詞|形容詞|助動詞', elem[1]):
-							query += '-'+elem[2]
+						if re.match('動詞|助動詞|形容詞', elem[1]):
+							try:
+								query += '-' + elem[2]
+							except IndexError: pass
 						try:
 							basecandidates = model.most_similar(positive = [query])
+							#print(basecandidates)
 							# 置換する語と元の語の品詞を一致させる
 							pat = re.compile('-' + elem[1])
-							# candidates=[x for x in candidates if pat.search(x[0])]
+							#candidates = [x for x in basecandidates if pat.search(x[0])]
 							candidates = [ ]
-							# --no-hiragana 有効時，平仮名だけの候補をはじく
-							# (副詞が対象だと置換するものがなくなりそうな予感)
 							for cand in basecandidates:
 								temp = re.split('-', cand[0])
+								# --no-hiragana 有効時，平仮名だけの候補をはじく
+								# (副詞が対象だと置換するものがなくなりそうな予感)
 								if pat.search(cand[0]):
 									if not args.no_hiragana or not is_hira(temp[0]):
 										candidates.append(cand)
@@ -286,37 +299,39 @@ if __name__=='__main__':
 							# 本当は変異する語の選択からやり直す必要がある
 							# が，今は変異は生成できなかったとあきらめる
 							flag = 1; break
-						if candidates == [ ]:
+						#print(candidates)
+						#if candidates == [ ]:
+						if len(candidates) == 0:
 							flag = 1; break
 						mutant = random.choice(candidates)
 						if args.debug:
 							print('# mutant: ' + mutant[0])
 						if args.show_similars: # 類似語集合の表示
-							print("#" + words[target] + " was replaced by " + mutant[0] + " from:")
-							print("#"); print(candidates)
+							print("# replacement candidate(s): %s" % candidates)
+							print("# " + mutant[0] + " replaced " + words[target])
 						if args.lb <= mutant[1] and mutant[1] <= args.ub: # 類似度評価
 							# 置換
-							words=replace(words, target, mutant[0])
-							if args.debug: print('# words: '); print(words)
+							words = replace(words, target, mutant[0])
+							if args.debug: print('# words: %s' % words)
 							break
 						# 試行回数の評価
 						cnt += 1
 						if args.debug: print("# Mutation tried ", cnt, "time(s)")
 						if cnt == 100:
 							flag = 1; break
-			# 結果の表示
-			if flag == 1:
-				#print(u'ERROR: Could not find candidate.')
-				print('# Alert: No mutation was made')
-			text = reunion(words, katsuyou)
-			if len(text) == 0:
-				pass
-			else:
-				if ignored == True:
+				#
+				text = reunion(words, katsuyou)
+				if len(text) == 0:
 					pass
 				else:
-					print(header + headersep + text + "[%d change(s) on %s]" % ((r - d), postags[args.pos]) )
-					#print(str(cand[1]) + '\t' + ''.join(words))
+					if ignored == True:
+						pass
+					else:
+						print(header + headersep + text + \
+							"[%s change #%d]" % (postags[args.pos], (r - d)) )
+				# 結果の表示
+				if flag == 1:
+					print('# Alert: No mutation was made')
 	except EOFError:
 		pass
 

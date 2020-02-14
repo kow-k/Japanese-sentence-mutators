@@ -43,8 +43,9 @@ Python 3.x で動作する (Python 2.7 では動作しない)．
 - 動詞 (助動詞は含まない) のみを変換させるには --pos=1 (サ変名詞を取り入れたい場合には --extend_V を追加)
 - 形容詞のみを変換させるには --pos=2
 - 副詞のみを変換させるには --pos=3 (形容詞を含めたい場合には --extend_Adv を追加)
-- 格助詞のみを変換させるには --pos=4 とする．
-- 形容動詞のみを変換させるには --pos=5 とする．
+- 格助詞のみを変換させるには --pos=4
+- 形容動詞のみを変換させるには --pos=5
+とする．
 
 使用例 (入力文の指定されたテキストを TEXT とする):
 
@@ -135,6 +136,6 @@ Python 3.x で動作する (Python 2.7 では動作しない)．
 - その他の幾つかのエラー処理は未実装．
 
 ## Copyrights
-Copyright (C) 2016-2020 Kow Kuroda All rights reserved.
+Copyright (C) 2016-2020 Kow Kuroda. All rights reserved.
 
 スクリプトのライセンスは Apache License, Version 2.0 です．

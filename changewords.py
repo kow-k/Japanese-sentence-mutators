@@ -42,7 +42,6 @@ from collections import defaultdict
 ## Kow Kuroda added the following 17 lines on 2017/02/22, 23
 import io
 out_enc      = in_enc = "utf-8"
-headersep    = ":"
 sys.stdin    = io.TextIOWrapper(sys.stdin.buffer, encoding=in_enc)
 sys.stdout   = io.TextIOWrapper(sys.stdout.buffer, encoding=out_enc)
 case_markers = [ 'が', 'を', 'に', 'で', 'から', 'と',  'へ', 'まで', 'によって' ]
@@ -86,7 +85,7 @@ def replace(words, position, cand):
 	words[position] = cand
 	return words
 
-def reunion(words, inflections):
+def reunion(words, inflect):
 	'''
 	形態素列を文に戻す
 	原形は活用させる
@@ -96,18 +95,19 @@ def reunion(words, inflections):
 	for i in range(len(words)):
 			elem = re.split('-', words[i])
 			if re.match('動詞|形容詞|助動詞', elem[1]):
-					kihon = inflections[elem[2]]['基本形']
+					kihon = inflect[elem[2]]['基本形']
 					pat = re.compile(kihon + '$')
 					base = pat.sub('', elem[0])
 					# 活用形のずれの ad hocな対応
-					# 助動詞たか接続助詞ての前にある用言を，活用に連用タ接続があればそっちに，なければ連用形にする
+					# 助動詞たか接続助詞ての前にある用言を，活用に連用タ接続があればそっちに，
+					# なければ連用形にする
 					if i < len(words) - 1 and re.search('(-助動詞-特殊・タ|て-助詞)', words[i+1]):
-						if elem[3] == '連用形' and '連用タ接続' in inflections[elem[2]]:
+						if elem[3] == '連用形' and '連用タ接続' in inflect[elem[2]]:
 							elem[3] = '連用タ接続'
-						elif elem[3] == '連用タ接続' and '連用タ接続' not in inflections[elem[2]] and '連用形' in inflections[elem[2]]:
+						elif elem[3] == '連用タ接続' and '連用タ接続' not in inflect[elem[2]] and '連用形' in inflect[elem[2]]:
 							elem[3] = '連用形'
-					if len(elem) == 4 and elem[3] in inflections[elem[2]]:
-						result += base + inflections[elem[2]][elem[3]]
+					if len(elem) == 4 and elem[3] in inflect[elem[2]]:
+						result += base + inflect[elem[2]][elem[3]]
 					else:
 						# 変異予定の語が求められている活用形を持たない場合，原形を返してみる
 						# 名詞-形容動詞語幹を形容詞に置き換えるとかで発生する
@@ -180,21 +180,23 @@ if __name__=='__main__':
 	#
 	args = ap.parse_args()
 	# 活用語尾リストの読み込み
-	inflection = defaultdict(lambda:defaultdict(str))
+	inflect = defaultdict(lambda:defaultdict(str))
 	for ln in args.inflection:
 		ln = ln.rstrip()
 		if args.debug:
 			print(ln)
 		line = re.split(',', ln)
-		inflection[line[0]][line[1]] = line[2]
+		inflect[line[0]][line[1]] = line[2]
 
 	cab = CaboCha.Parser(u'-f1')
 	model = KeyedVectors.load_word2vec_format(args.bin, binary = True)
 	#
 	if   args.extend_V == True:
 		args.pos = 1
+		print("pos changed to %s by args.extend_V" % postags[1])
 	elif args.extend_Adv == True:
 		args.pos = 3
+		print("pos changed to %s by args.extend_Adv" % postags[1])
 	#
 	try:
 		if args.debug: print("encoding: %s" % sys.getdefaultencoding())
@@ -366,7 +368,7 @@ if __name__=='__main__':
 						if cnt == 100:
 							flag = 1; break
 				#
-				text = reunion(words, inflection)
+				text = reunion(words, inflect)
 				if len(text) == 0:
 					pass
 				else:

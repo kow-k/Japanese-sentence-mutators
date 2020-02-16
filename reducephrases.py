@@ -42,14 +42,14 @@ def process(sentence, targets, header, headersep):
 		phrases.append(temp)
 	#
 	for i in range(len(phrases)):
-		if i not in targets and i != len(phrases) - 1:
+		if i not in targets and i != (len(phrases) - 1):
 			phrases[sentence[i]['link']] = phrases[i] + phrases[sentence[i]['link']]
 			phrases[i] = ''
-	#
 	phrases = [ x for x in phrases if x != '' ]
+	if args.debug:
+		print("# phrases before popping: %s" % phrases)
 	# 最後の chunkは固定
 	pred = phrases.pop()
-
 	# 削除対象の抽出
 	phraseindices = [ ]
 	for i in range(0, len(phrases)):
@@ -60,15 +60,15 @@ def process(sentence, targets, header, headersep):
 			phraseindices.append(i)
 	if args.debug:
 		print('# Phrases: %s' % phrases)
-		print('# Reduce candidates: %s' % phraseindices)
+		print('# Reduction candidates: %s' % phraseindices)
 	reductions = reduce(phrases, phraseindices, pred)
 	if args.debug:
 		print(reductions)
 	for i, reduction in enumerate(reductions):
-		#if len(header) > 0:
-		#	header = header + headersep + " "
-		#print(header + headersep + " " + reduction + "[reduced #%d]" % (i + 1))
-		print(header + headersep + " " + reduction[0] + "[degree %d]" % (reduction[1]))
+		if len(reduction) > 0:
+			print(header + headersep + " " + reduction[0] + "[degree %d]" % (reduction[1]))
+		else:
+			print("# Reduction didn't apply")
 
 def reduce(phrases, phraseindices, pred):
 	# 削除する項を一つずつ増やしていく
@@ -78,20 +78,23 @@ def reduce(phrases, phraseindices, pred):
 	reductions = [ ]
 	while True:
 		if len(phrases) - degree < end:
+			text = ''.join(phrases) + pred
+			reductions.append((text, 0))
 			break
-		if args.debug:
-			print('## Delete', degree, 'phrase(s)')
-		rests = combinations(phraseindices, degree)
-		for r in rests:
-			results = [ ]
-			for i in range(0, len(phrases)):
-				if not i in r:
-					results.append(phrases[i])
-			text = ''.join(results) + pred
-			#reductions.append(text)
-			reductions.append((text, degree)) # return text, degree pair
-			#print(header + headersep + text + "[reduced %d phrase(s)]" % degree)
-		degree += 1
+		else:
+			if args.debug:
+				print('## Delete', degree, 'phrase(s)')
+			rests = combinations(phraseindices, degree)
+			for r in rests:
+				results = [ ]
+				for i in range(0, len(phrases)):
+					if not i in r:
+						results.append(phrases[i])
+				text = ''.join(results) + pred
+				#reductions.append(text)
+				reductions.append((text, degree)) # return text, degree pair
+				#print(header + headersep + text + "[reduced %d phrase(s)]" % degree)
+			degree += 1
 	return reductions
 
 if __name__ == '__main__':

@@ -33,7 +33,6 @@ import CaboCha
 
 import io
 out_enc = in_enc = "utf-8"
-headersep   = ":"
 sys.stdin   = io.TextIOWrapper(sys.stdin.buffer, encoding = in_enc)
 sys.stdout  = io.TextIOWrapper(sys.stdout.buffer, encoding = out_enc)
 
@@ -59,7 +58,9 @@ def process(inp, headersep):
 		phrases, pred = swap(sentence, target)
 		# 結果の表示
 		text = ''.join(phrases) + pred
-		print(header + headersep + text + "[swap %d]" % (r - d))
+		if len(header) > 0:
+			header = header + headersep + " "
+		print(header + text + "[swap %d]" % (r - d))
 
 def swap(sentence, target):
 	phrases = [ ]
@@ -117,8 +118,8 @@ if __name__ == '__main__':
 	## Kow Kuroda added the following three arguments.
 	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
 	ap.add_argument('--silent', action='store_true', help = '入力の非表示')
-	ap.add_argument('--displace', type = int, help='スワップの回数(default 1)', default = 1)
-	ap.add_argument('--headersep', type = str, help='ヘッダーの区切り記号', default = ':')
+	ap.add_argument('--displace', type = int, help = 'スワップの回数(default 1)', default = 1)
+	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
 	ap.add_argument('--commentchar', type = str, help = 'コメント行の識別記号', default='%')
 	#
 	args = ap.parse_args()
@@ -126,7 +127,8 @@ if __name__ == '__main__':
 	cab = CaboCha.Parser('-f1')
 	#
 	try:
-		if args.debug: print("encoding: %s" % sys.getdefaultencoding())
+		if args.debug:
+			print("encoding: %s" % sys.getdefaultencoding())
 		## Kow Kuroda modified the following routine on 2017/04/08
 		## by adding loop under r = args.repeat.
 		while True:
@@ -137,7 +139,7 @@ if __name__ == '__main__':
 				if inp[0] == args.commentchar: # コメント行を無視
 					pass
 				else:
-					process(inp, headersep)
+					process(inp, args.headersep)
 	except EOFError:
 		pass
 

@@ -66,7 +66,10 @@ def process(sentence, targets, header, headersep):
 		print(reductions)
 	for i, reduction in enumerate(reductions):
 		if len(reduction) > 0:
-			print(header + headersep + " " + reduction[0] + "[degree %d]" % (reduction[1]))
+			if header == '':
+				print(reduction[0] + "[degree %d]" % (reduction[1]))
+			else:
+				print(header + headersep + " " + reduction[0] + "[degree %d]" % (reduction[1]))
 		else:
 			print("# Reduction didn't apply")
 

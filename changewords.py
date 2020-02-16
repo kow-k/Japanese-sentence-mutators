@@ -375,8 +375,9 @@ if __name__=='__main__':
 					if ignored == True:
 						pass
 					else:
-						print(header + headersep + text + \
-							"[%s change #%d]" % (postags[args.pos], (r - d)) )
+						if len(header) > 0:
+							header = header + args.headersep + " "
+						print(header + text + "[%s change #%d]" % (postags[args.pos], (r - d)) )
 				# 結果の表示
 				if flag == 1:
 					print('# Alert: No mutation was made')

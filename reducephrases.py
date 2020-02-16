@@ -31,7 +31,8 @@ sys.stdin  = io.TextIOWrapper(sys.stdin.buffer, encoding=in_enc)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=out_enc)
 
 # Functions
-def process(sentence, parget):
+def process(sentence, targets, header, headersep):
+
 	phrases = [ ]
 	for c in sentence:
 		temp = ''
@@ -39,12 +40,12 @@ def process(sentence, parget):
 			line = re.split('\t', m)
 			temp += line[0]
 		phrases.append(temp)
-
+	#
 	for i in range(len(phrases)):
-		if i not in target and i != len(phrases) - 1:
+		if i not in targets and i != len(phrases) - 1:
 			phrases[sentence[i]['link']] = phrases[i] + phrases[sentence[i]['link']]
 			phrases[i] = ''
-
+	#
 	phrases = [ x for x in phrases if x != '' ]
 	# 最後の chunkは固定
 	pred = phrases.pop()
@@ -57,29 +58,41 @@ def process(sentence, parget):
 				phraseindices.append(i)
 		else:
 			phraseindices.append(i)
-	reduce(phrases, phraseindices, pred)
+	if args.debug:
+		print('# Phrases: %s' % phrases)
+		print('# Reduce candidates: %s' % phraseindices)
+	reductions = reduce(phrases, phraseindices, pred)
+	if args.debug:
+		print(reductions)
+	for i, reduction in enumerate(reductions):
+		#if len(header) > 0:
+		#	header = header + headersep + " "
+		#print(header + headersep + " " + reduction + "[reduced #%d]" % (i + 1))
+		print(header + headersep + " " + reduction[0] + "[degree %d]" % (reduction[1]))
 
 def reduce(phrases, phraseindices, pred):
 	# 削除する項を一つずつ増やしていく
 	# 終了条件
 	end = args.lb
-	count = 1
-	if args.debug:
-		print('Phrases: %s' % phrases)
-		print('Reduce candidates: %s' % phraseindices)
+	degree = 1
+	reductions = [ ]
 	while True:
-		if len(phrases) - count < end: break
+		if len(phrases) - degree < end:
+			break
 		if args.debug:
-			print('## delete', count, 'phrase(s)')
-		rests = combinations(phraseindices, count)
+			print('## Delete', degree, 'phrase(s)')
+		rests = combinations(phraseindices, degree)
 		for r in rests:
-			result = [ ]
+			results = [ ]
 			for i in range(0, len(phrases)):
 				if not i in r:
-					result.append(phrases[i])
-			text = ''.join(result) + pred
-			print(header + headersep + text + "[reduced %d phrase(s)]" % count)
-		count += 1
+					results.append(phrases[i])
+			text = ''.join(results) + pred
+			#reductions.append(text)
+			reductions.append((text, degree)) # return text, degree pair
+			#print(header + headersep + text + "[reduced %d phrase(s)]" % degree)
+		degree += 1
+	return reductions
 
 if __name__ == '__main__':
 
@@ -111,14 +124,18 @@ if __name__ == '__main__':
 						print(inp + '[original]')
 					# headerの分離
 					try:
-						header, inp = inp.split(headersep)
+						header, inp = inp.split(args.headersep)
 					except ValueError:
 						header = ""; headersep = ""
 					#
 					cabocha = cab.parseToString(inp)
 					sentence = Struc.structure(cabocha)
-					target = sentence[len(sentence) - 1]['deps']
-					process(sentence, target)
+					if args.debug:
+						print("# sentence: %s" % sentence)
+					targets = sentence[len(sentence) - 1]['deps']
+					if args.debug:
+						print("# targets: %s" % targets)
+					process(sentence, targets, header, args.headersep)
 	except EOFError:
 		pass
 

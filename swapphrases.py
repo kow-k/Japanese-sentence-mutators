@@ -58,9 +58,10 @@ def process(inp, headersep):
 		phrases, pred = swap(sentence, target)
 		# 結果の表示
 		text = ''.join(phrases) + pred
-		if len(header) > 0:
-			header = header + headersep + " "
-		print(header + text + "[swap %d]" % (r - d))
+		if header == '':
+			print(text + "[swap %d]" % (r - d))
+		else:
+			print(header + headersep + " " + text + "[swap %d]" % (r - d))
 
 def swap(sentence, target):
 	phrases = [ ]

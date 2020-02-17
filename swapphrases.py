@@ -38,6 +38,7 @@ sys.stdout  = io.TextIOWrapper(sys.stdout.buffer, encoding = out_enc)
 
 # functions
 def process(inp, headersep):
+
 	# original の表示 (任意)
 	if not args.silent:
 		print(inp + '[original]')
@@ -45,37 +46,68 @@ def process(inp, headersep):
 	try:
 		header, inp = inp.split(headersep)
 	except ValueError:
-		header = ""; headersep = ""
-	result = inp
+		header = ""
+	source = inp
 	r = args.repeat # r は世代に相当
 	d = r
 	while d > 0:
 		d -= 1
-		inp = result
+		inp = source
 		cabocha = cab.parseToString(inp)
-		sentence = Struc.structure(cabocha)
-		target = sentence[len(sentence) - 1]['deps']
-		phrases, pred = swap(sentence, target)
+		parse = Struc.structure(cabocha)
+		targets = parse[len(parse) - 1]['deps']
+		if args.debug:
+			print("# targets: %s" % targets)
+		phrases, pred = swap(parse, targets)
 		# 結果の表示
-		text = ''.join(phrases) + pred
-		if header == '':
-			print(text + "[swap %d]" % (r - d))
+		result = ''.join(phrases) + pred
+		if len(header) <= 0:
+			text = result + "[swap %d]" % (r - d)
 		else:
-			print(header + headersep + " " + text + "[swap %d]" % (r - d))
+			text = header + headersep + " " + result + "[swap %d]" % (r - d)
+		print(text)
 
-def swap(sentence, target):
+def swap(parse, targets):
+
+	#P = [ ]
+	#for p in reversed(range(len(targets))):
+	#	ph = [ ]
+	#	for c in reversed(parse):
+	#		print("# c*: %s" % c)
+	#		if c['link'] == p:
+	#			ph.append(c['surface'])
+	#	P.append(ph)
+	#	print(P)
+	#for x in reversed(P):
+	#	print("# R: %s" % x)
+	#
 	phrases = [ ]
-	for c in sentence:
+	for c in parse:
+		if args.debug:
+			print("# c: %s" % c)
 		temp = ''
 		for m in c['morphs']:
 			line = re.split('\t', m)
 			temp += line[0]
 		phrases.append(temp)
+	if args.debug:
+		print("# phrases: %s" % phrases)
+	# この処理にはバグがあって直さないといけない
 	for i in range(len(phrases)):
-		if i not in target and i != len(phrases) - 1:
-			phrases[sentence[i]['link']] = phrases[i] + phrases[sentence[i]['link']]
+		if i not in targets and i != len(phrases) - 1:
+			t = phrases[parse[i]['link']]
+			if args.debug:
+				#print("# phrases: %s" % phrases[i])
+				print("# t: %s" % t)
+				#pass
+			phrases[parse[i]['link']] = phrases[i] + t
 			phrases[i] = ''
-	phrases = [ x for x in phrases if x != '' ]
+			if args.debug:
+				print("# phrase being built: %s" % phrases)
+	try:
+		phrases = [ x for x in phrases if x != '' ]
+	except IndexError:
+		pass
 	# 入れ替え, 最後のchunkは固定
 	pred = phrases.pop()
 	# --start と--end の範囲
@@ -96,8 +128,8 @@ def swap(sentence, target):
 	#
 	random.shuffle(indices)
 	if args.debug:
-		print('swap target:', phrases)
-		print('swap list:', indices)
+		print('swap targets: %s' % phrases)
+		print('swap list: %s' % indices)
 	#
 	pnt = 0
 	for n in range(0, times):

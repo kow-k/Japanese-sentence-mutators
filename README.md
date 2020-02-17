@@ -144,7 +144,7 @@ Python 3.x で動作する (Python 2.7 では動作しない)．
 - --lb n で削除で残る文節数の下限 nを指定．使用例 (入力文の指定されたテキストを TEXT とする):
 
     ```
-    cat TEXT | ./reducephrases.py --lb 3 % 少なくとも3つの文節を残す
+    cat TEXT | ./reducephrases.py --lb 3 # 少なくとも3つの文節を残す
     ```
 
 - --exclude_wa で「は」で終わる節を削除対象から除外．

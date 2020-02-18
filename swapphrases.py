@@ -108,10 +108,10 @@ def swap(parses):
 	indices = list(range(start, end + 1))
 	if args.debug:
 		print("# indices: %s" % indices)
-	#
 	if args.gap > 0:
 		g = int(args.gap)
-		if len(indices) - g > 0:
+		diff = len(indices) - g
+		if diff >= 0:
 			R = list(range(g, len(indices) + 1)) # range(a,b) not work!
 			p = random.choice(R)
 			I = [ ]

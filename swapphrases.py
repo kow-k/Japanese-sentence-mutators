@@ -127,10 +127,15 @@ def gen_phrases(parses):
 	if args.debug:
 		print("# pred: %s at %d" % (pred, pred_index))
 	targets = parses[pred_index]['deps']
+	# 0 を含まない targets の扱い
+	if len([ x for x in targets if x == 0 ]) == 0:
+		L = [0]
+		L.extend(targets)
+		targets = L
 	if args.debug:
 		print("# targets: %s" % targets)
+	# 新しい方法で分節を構成
 	phrases = [ ]
-	# tricky building of phrases
 	for i, x in enumerate(targets):
 		if i == 0:
 			try:

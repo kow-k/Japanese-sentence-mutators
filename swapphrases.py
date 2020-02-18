@@ -68,6 +68,7 @@ def process(inp, headersep):
 
 def swap(parses):
 
+	## 候補生成
 	## original code
 	#phrases = [ ]
 	#for p in parses:
@@ -81,7 +82,8 @@ def swap(parses):
 	#		phrases[parses[i]['link']] = phrases[i] + phrases[parses[i]['link']]
 	#		phrases[i] = ''
 	#phrases = [ x for x in phrases if x != '' ]
-	# 候補生成
+
+	## 新しいコード
 	phrases, pred = gen_phrases(parses)
 	if args.debug:
 		print("# phrases to swap: %s" % phrases)
@@ -95,34 +97,25 @@ def swap(parses):
 		end = len(phrases) - 1
 	else:
 		end = args.end
-	# 1回で何回 swap させるか (--displace)
-	# start から end までの要素の数/2が上限
+	# 1回で何回 swap させるか (--displace): start から end までの要素の数/2が上限
 	times = int(args.displace)
-
 	# 何と何を入れ替えるかをリストで表現する: 要素 2 個が swap 1 回に該当
 	indices = list(range(start, end + 1))
-	#print(indices)
+	if args.debug:
+		print("# indices: %s" % indices)
+	#
 	if int(len(indices) / 2) < times:
 		times = int(len(indices) / 2)
 	random.shuffle(indices)
 	if args.debug:
-		print('swapped targets: %s' % indices)
+		print('# swapped indices: %s' % indices)
 	#
-	nphrases = len(phrases)
-	#print(phrases)
-	#print("# nphrases: %d" % nphrases)
-	if nphrases < 2:
-		pass
-	elif nphrases == 2:
-		phrases = [phrases[0], phrases[1]]
-	else:
-		#
-		pnt = 0
-		for n in range(0, times):
-			temp = phrases[indices[pnt]]
-			phrases[indices[pnt]] = phrases[indices[pnt + 1]]
-			phrases[indices[pnt + 1]] = temp
-			pnt += 2
+	pnt = 0
+	for n in range(0, times):
+		temp = phrases[indices[pnt]]
+		phrases[indices[pnt]] = phrases[indices[pnt + 1]]
+		phrases[indices[pnt + 1]] = temp
+		pnt += 2
 	if args.debug:
 		print('# swap result: %s' % phrases)
 	return phrases, pred
@@ -130,40 +123,40 @@ def swap(parses):
 def gen_phrases(parses):
 
 	pred_index = len(parses) - 1
-	pred = parses[pred_index]['surface']
-	if args.debug:
-		print("# pred: %s at %d" % (pred, pred_index))
 	targets = parses[pred_index]['deps']
 	if args.debug:
 		print("# targets: %s" % targets)
-	# 0 を含まない targets の扱い: 先頭に 0 を追加
-	if len([ x for x in targets if x == 0 ]) == 0:
-		L = [0]
-		L.extend(targets)
-		targets = L
+	pred = parses[pred_index]['surface']
+	if args.debug:
+		print("# pred at %d: %s" % (pred_index, pred))
+	# 新しい方法で分節を構成
+	if len(targets) <= 1:
+		phrases = [ p['surface'] for p in parses ]
+	elif len(targets) == 2:
+		pass
+	else:
+		targets = [ i for i in targets if not i == 0 ] # remove offending 0
 	if args.debug:
 		print("# modified targets: %s" % targets)
-	# 新しい方法で分節を構成
-	if len(targets) < 2:
-		phrases = [parses[0]['surface']]
+	if len(targets) == 0:
+		phrases = [ parses[0]['surface'] ]
 	else:
 		phrases = [ ]
 		for i, x in enumerate(targets):
 			if i == 0:
 				try:
-					matches = parses[targets[i]: targets[i + 1] + 1]
+					matches = parses[ : targets[i] + 1]
 					phrase = "".join([ m['surface'] for m in matches ])
 					phrases.append(phrase)
 				except IndexError:
 					pass
 			else:
-				if i < len(targets):
-					try:
-						matches = parses[targets[i] + 1: targets[i + 1] + 1]
-						phrase = "".join([ m['surface'] for m in matches ])
-						phrases.append(phrase)
-					except IndexError:
-						pass
+				try:
+					matches = parses[targets[i - 1] + 1: targets[i] + 1]
+					phrase = "".join([ m['surface'] for m in matches ])
+					phrases.append(phrase)
+				except IndexError:
+					pass
 			phrases = [ p for p in phrases if p != '' ]
 	return phrases, pred
 

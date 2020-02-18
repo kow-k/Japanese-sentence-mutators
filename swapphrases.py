@@ -109,9 +109,28 @@ def swap(parses):
 	if args.debug:
 		print("# indices: %s" % indices)
 	#
-	if int(len(indices) / 2) < times:
-		times = int(len(indices) / 2)
-	random.shuffle(indices)
+	if args.gap > 0:
+		g = int(args.gap)
+		if len(indices) - g > 0:
+			R = list(range(g, len(indices) + 1)) # range(a,b) not work!
+			p = random.choice(R)
+			I = [ ]
+			try:
+				I.extend(indices[ :(p - g)])
+				I.append(indices[p])
+				I.extend(indices[(p - g) + 1: p])
+				I.append(indices[p - g])
+				I.extend(indices[p + 1: ])
+				#print(I)
+				indices = I
+			except IndexError:
+				pass
+		else:
+			pass
+	else:
+		if int(len(indices) / 2) < times:
+			times = int(len(indices) / 2)
+		random.shuffle(indices)
 	if args.debug:
 		print('# swapped indices: %s' % indices)
 	#
@@ -177,6 +196,7 @@ if __name__ == '__main__':
 	ap.add_argument('--end', type = int, help = '順序替えの範囲 (終点)', default = 0)
 	## Kow Kuroda added the following three arguments.
 	ap.add_argument('--degree', type = int, help = '処理当りのスワップの度数 (default 1)', default = 1)
+	ap.add_argument('--gap', type = int, help = 'スワップの距離 (default 0)', default = 0)
 	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
 	ap.add_argument('--aggressive', action = 'store_true', help = '分節のまとめ上げをしない')
 	ap.add_argument('--silent', action = 'store_true', help = '入力の非表示')

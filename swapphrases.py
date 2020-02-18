@@ -128,12 +128,12 @@ def swap(parses):
 def gen_phrases(parses):
 
 	pred_index = len(parses) - 1
-	targets = parses[pred_index]['deps']
-	if args.debug:
-		print("# targets: %s" % targets)
 	pred = parses[pred_index]['surface']
 	if args.debug:
 		print("# pred at %d: %s" % (pred_index, pred))
+	targets = parses[pred_index]['deps']
+	if args.debug:
+		print("# targets: %s" % targets)
 	# 新しい方法で分節を構成
 	if len(targets) <= 1:
 		phrases = [ p['surface'] for p in parses ]

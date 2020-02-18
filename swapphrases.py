@@ -137,7 +137,7 @@ def gen_phrases(parses):
 	# 新しい方法で分節を構成
 	if len(targets) <= 1:
 		phrases = [ p['surface'] for p in parses ]
-	elif len(targets) == 2:
+	elif len(targets) <= 2:
 		pass
 	else:
 		targets = [ i for i in targets if not i == 0 ] # remove offending 0

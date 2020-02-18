@@ -55,16 +55,14 @@ def process(inp, headersep):
 		inp = result
 		cabocha = cab.parseToString(inp)
 		parses = Struc.structure(cabocha)
-		if args.debug:
-			print("# surfaces: %s" % [p['surface'] for p in parses])
 		# 並べ替え
 		phrases, pred = swap(parses)
 		# 結果の表示
 		text = ''.join(phrases) + pred
 		if len(header) <= 0:
-			print(text + "[swap %d with degree %d]" % ((r - d), args.displace))
+			print(text + "[swap %d with degree %d]" % ((r - d), args.degree))
 		else:
-			print(header + headersep + " " + text + "[swap %d with degree %d]" % ((r - d), args.displace))
+			print(header + headersep + " " + text + "[swap %d with degree %d]" % ((r - d), args.degree))
 
 def swap(parses):
 
@@ -82,9 +80,16 @@ def swap(parses):
 	#		phrases[parses[i]['link']] = phrases[i] + phrases[parses[i]['link']]
 	#		phrases[i] = ''
 	#phrases = [ x for x in phrases if x != '' ]
-
 	## 新しいコード
-	phrases, pred = gen_phrases(parses)
+	P = [ p['surface'] for p in parses ]
+	if args.debug:
+		print("# surfaces: %s" % P)
+	#
+	if args.aggressive:
+		phrases, pred = P[:-1], P[-1]
+	else:
+		phrases, pred = gen_phrases(parses)
+	#
 	if args.debug:
 		print("# phrases to swap: %s" % phrases)
 		print("# pred: %s" % pred)
@@ -97,8 +102,8 @@ def swap(parses):
 		end = len(phrases) - 1
 	else:
 		end = args.end
-	# 1回で何回 swap させるか (--displace): start から end までの要素の数/2が上限
-	times = int(args.displace)
+	# 1回で何回 swap させるか (--degree): start から end までの要素の数/2が上限
+	times = int(args.degree)
 	# 何と何を入れ替えるかをリストで表現する: 要素 2 個が swap 1 回に該当
 	indices = list(range(start, end + 1))
 	if args.debug:
@@ -171,9 +176,10 @@ if __name__ == '__main__':
 	ap.add_argument('--start', type = int, help = '順序替えの範囲 (始点) (0 からカウント)', default = 0)
 	ap.add_argument('--end', type = int, help = '順序替えの範囲 (終点)', default = 0)
 	## Kow Kuroda added the following three arguments.
-	ap.add_argument('--displace', type = int, help = 'スワップの回数 (default 1)', default = 1)
+	ap.add_argument('--degree', type = int, help = '処理当りのスワップの度数 (default 1)', default = 1)
 	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
-	ap.add_argument('--silent', action='store_true', help = '入力の非表示')
+	ap.add_argument('--aggressive', action = 'store_true', help = '分節のまとめ上げをしない')
+	ap.add_argument('--silent', action = 'store_true', help = '入力の非表示')
 	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
 	ap.add_argument('--commentchar', type = str, help = 'コメント行の識別記号', default='%')
 	#

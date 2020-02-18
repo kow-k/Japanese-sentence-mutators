@@ -20,3 +20,4 @@ set2-unified.txt
 set2-X-mutations-change-v.txt
 set2-unified-corrected-exported.txt
 __pycache__
+.*-test.py

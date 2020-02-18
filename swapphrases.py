@@ -15,12 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # created by Hikaru Yokono (yokono.hikaru@jp.fujitsu.com).
 #
-# modified by Kow Kuroda (kow.kuroda@gmail.com), 2017/02/22, 23, 04/08; 2020/02/15
+# modifications by Kow Kuroda (kow.kuroda@gmail.com), 2017/02/22, 23, 04/08; 2020/02/15
 # 1. sys.stdin, stdout の wrapping 処理を追加
 # 2. repeat factor r の導入
+# modifications by Kow Kuroda (kow.kuroda@gmail.com), 2020/02/18
+# 3. 文節の構成の仕方を再実装して，D1 D2 H の順序が D2 D1 H と再生される問題を解消
 
 import os
 import sys
@@ -38,7 +39,6 @@ sys.stdout  = io.TextIOWrapper(sys.stdout.buffer, encoding = out_enc)
 
 # functions
 def process(inp, headersep):
-
 	# original の表示 (任意)
 	if not args.silent:
 		print(inp + '[original]')
@@ -46,70 +46,49 @@ def process(inp, headersep):
 	try:
 		header, inp = inp.split(headersep)
 	except ValueError:
-		header = ""
-	source = inp
+		header = ""; headersep = ""
+	result = inp
 	r = args.repeat # r は世代に相当
 	d = r
 	while d > 0:
 		d -= 1
-		inp = source
+		inp = result
 		cabocha = cab.parseToString(inp)
-		parse = Struc.structure(cabocha)
-		targets = parse[len(parse) - 1]['deps']
+		parses = Struc.structure(cabocha)
 		if args.debug:
-			print("# targets: %s" % targets)
-		phrases, pred = swap(parse, targets)
+			#print("# parse: %s" % parse)
+			for p in parses:
+				print("# surface: %s" % p['surface'])
+		phrases, pred = swap(parses)
 		# 結果の表示
-		result = ''.join(phrases) + pred
+		text = ''.join(phrases) + pred
 		if len(header) <= 0:
-			text = result + "[swap %d]" % (r - d)
+			print(text + "[swap %d]" % (r - d))
 		else:
-			text = header + headersep + " " + result + "[swap %d]" % (r - d)
-		print(text)
+			print(header + headersep + " " + text + "[swap %d]" % (r - d))
 
-def swap(parse, targets):
+def swap(parses):
 
-	#P = [ ]
-	#for p in reversed(range(len(targets))):
-	#	ph = [ ]
-	#	for c in reversed(parse):
-	#		print("# c*: %s" % c)
-	#		if c['link'] == p:
-	#			ph.append(c['surface'])
-	#	P.append(ph)
-	#	print(P)
-	#for x in reversed(P):
-	#	print("# R: %s" % x)
-	#
-	phrases = [ ]
-	for c in parse:
-		if args.debug:
-			print("# c: %s" % c)
-		temp = ''
-		for m in c['morphs']:
-			line = re.split('\t', m)
-			temp += line[0]
-		phrases.append(temp)
+	## original code
+	#phrases = [ ]
+	#for p in parses:
+	#	temp = ''
+	#	for m in p['morphs']:
+	#		line = re.split('\t', m)
+	#		temp += line[0]
+	#	phrases.append(temp)
+	#for i in range(len(phrases)):
+	#	if i not in targets and i != len(phrases) - 1:
+	#		phrases[parses[i]['link']] = phrases[i] + phrases[parses[i]['link']]
+	#		phrases[i] = ''
+	#phrases = [ x for x in phrases if x != '' ]
+
+	phrases, pred = gen_phrases(parses)
 	if args.debug:
 		print("# phrases: %s" % phrases)
-	# この処理にはバグがあって直さないといけない
-	for i in range(len(phrases)):
-		if i not in targets and i != len(phrases) - 1:
-			t = phrases[parse[i]['link']]
-			if args.debug:
-				#print("# phrases: %s" % phrases[i])
-				print("# t: %s" % t)
-				#pass
-			phrases[parse[i]['link']] = phrases[i] + t
-			phrases[i] = ''
-			if args.debug:
-				print("# phrase being built: %s" % phrases)
-	try:
-		phrases = [ x for x in phrases if x != '' ]
-	except IndexError:
-		pass
+		print("# pred: %s" % pred)
+
 	# 入れ替え, 最後のchunkは固定
-	pred = phrases.pop()
 	# --start と--end の範囲
 	start = args.start
 	end = 0
@@ -117,19 +96,19 @@ def swap(parse, targets):
 		end = len(phrases) - 1
 	else:
 		end = args.end
-	# 1回で何回 swap させるか(--displace)
+	# 1回で何回 swap させるか (--displace)
 	# start から end までの要素の数/2が上限
 	times = int(args.displace)
 
-	# 何と何を入れ替えるかをリストで表現する: 要素 2 個が swap1 回に該当
+	# 何と何を入れ替えるかをリストで表現する: 要素 2 個が swap 1 回に該当
 	indices = list(range(start, end + 1))
 	if int(len(indices)/2) < times:
 		times = int(len(indices)/2)
 	#
 	random.shuffle(indices)
 	if args.debug:
-		print('swap targets: %s' % phrases)
-		print('swap list: %s' % indices)
+		print('swap target:', phrases)
+		print('swap list:', indices)
 	#
 	pnt = 0
 	for n in range(0, times):
@@ -138,20 +117,53 @@ def swap(parse, targets):
 		phrases[indices[pnt + 1]] = temp
 		pnt += 2
 	if args.debug:
-		print('swap result:', phrases)
+		print('# swap result: %s' % phrases)
 	return phrases, pred
 
+def gen_phrases(parses):
+
+	pred_index = len(parses) - 1
+	pred = parses[pred_index]['surface']
+	if args.debug:
+		print("# pred: %s at %d" % (pred, pred_index))
+	targets = parses[pred_index]['deps']
+	if args.debug:
+		print("# targets: %s" % targets)
+	phrases = [ ]
+	# tricky building of phrases
+	for i, x in enumerate(targets):
+		if i == 0:
+			try:
+				matches = parses[targets[i]: targets[i + 1] + 1]
+				phrase = "".join([ m['surface'] for m in matches ])
+				phrases.append(phrase)
+			except IndexError:
+				pass
+		else:
+			if i < len(targets):
+				try:
+					matches = parses[targets[i] + 1: targets[i + 1] + 1]
+					phrase = "".join([ m['surface'] for m in matches ])
+					phrases.append(phrase)
+				except IndexError:
+					pass
+	phrases = [ p for p in phrases if p != '' ]
+	return phrases, pred
+
+## main
+
 if __name__ == '__main__':
+
 	import argparse
 	# コマンドラインオプション
-	ap = argparse.ArgumentParser(description="主節の述語に係る句の並びを変える")
-	ap.add_argument('--debug',action='store_true',help='debug')
-	ap.add_argument('--start',type = int,help='順序替えの範囲 (始点) (0 からカウント)',default = 0)
+	ap = argparse.ArgumentParser(description = "主節の述語に係る句の並びを変える")
+	ap.add_argument('--debug', action = 'store_true', help = 'debug')
+	ap.add_argument('--start', type = int, help = '順序替えの範囲 (始点) (0 からカウント)', default = 0)
 	ap.add_argument('--end', type = int, help = '順序替えの範囲 (終点)', default = 0)
 	## Kow Kuroda added the following three arguments.
+	ap.add_argument('--displace', type = int, help = 'スワップの回数 (default 1)', default = 1)
 	ap.add_argument('--repeat', type = int, help = '反復回数', default = 1)
 	ap.add_argument('--silent', action='store_true', help = '入力の非表示')
-	ap.add_argument('--displace', type = int, help = 'スワップの回数(default 1)', default = 1)
 	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
 	ap.add_argument('--commentchar', type = str, help = 'コメント行の識別記号', default='%')
 	#

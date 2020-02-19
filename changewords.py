@@ -99,7 +99,7 @@ def process(inp, r): # line-wise process
 		result = reunion(mutated_words, inflect)
 		# 結果の表示
 		if failed == True:
-			print('# attempt failed, making no mutation')
+			print('# Mutation failed, making no change')
 		if len(result) <= 0:
 			pass
 		else:
@@ -206,12 +206,15 @@ def mutate(words, positions):
 		elif posmap[args.pos] == 'V': pos = 'v'
 		elif posmap[args.pos] == 'Adj': pos = 'a'
 		else:
-			print("POS specification is invalid: Aborted")
+			print("POS specification is invalid")
 		candidates = wnj_similars(elem[0], pos)
-		mutant = random.choice(candidates)
-		words[target] = mutant # simple replacement
+		try:
+			mutant = random.choice(candidates)
+			words[target] = mutant # simple replacement
+		except IndexError:
+			failed = True
 		return (words, failed)
-	# Original Distributional Similarity data
+	# Original distributional similarity data
 	else:
 		trial  = 0 # 諦めカウンタ
 		while True:
@@ -219,7 +222,7 @@ def mutate(words, positions):
 			if targetpos[args.pos] == '格助詞': # 格助詞の変異
 				C = [ x for x in case_markers if x + '-助詞' != words[target] ]
 				if args.debug:
-					print(C)
+					print("# C: %s" % C)
 				mutant = weighted_random_choice(case_factors, C)
 				mutant += '-助詞'
 				if args.show_similars:
@@ -235,7 +238,6 @@ def mutate(words, positions):
 					try:
 						query += '-' + elem[2]
 					except IndexError: pass
-				#
 				try:
 					basecandidates = model.most_similar(positive = [query])
 					if args.debug:
@@ -266,21 +268,22 @@ def mutate(words, positions):
 			if args.debug:
 				print('# mutant: ' + mutant[0])
 			if args.show_similars: # 類似語集合の表示
-				print("# replacement candidate(s): %s" % candidates)
+				print("# candidates: %s" % candidates)
 				print("# " + mutant[0] + " replaced " + words[target])
 			#
+			# 試行回数の評価
+			trial += 1
 			if args.lb <= mutant[1] and mutant[1] <= args.ub: # 類似度評価
 				# 置換
 				words = replace(words, target, mutant[0])
 				if args.debug:
 					print('# words: %s' % words)
 				break
-			# 試行回数の評価
-			trial += 1
 			if args.debug:
 				print("# %d attempts before failure" % trial)
 			if trial >= args.try_until:
-				failed = True; break
+				failed = True
+				break
 		#
 		return (words, failed)
 
@@ -295,15 +298,18 @@ def wnj_similars(word, pos):
 	lemma=? and word.pos=? and word.wordid = sense.wordid
 	'''
 	W = cursor.execute(q1, (word, pos))
-	w = random.choice(W.fetchall()) # use of .fetchall() is crucial
-	selected_synsetid = w[0]
-	q2 = '''
-	select synset, lemma, pos from sense, word where
-	synset=? and pos=? and word.wordid = sense.wordid and word.lang='jpn'
-	'''
-	synset_mates = cursor.execute(q2, (selected_synsetid, pos))
-	X = [ x[1] for x in synset_mates.fetchall() ]
-	Y = [ "%s-%s" % (x, targetpos[args.pos]) for x in X ]
+	try:
+		w = random.choice(W.fetchall()) # use of .fetchall() is crucial
+		selected_synsetid = w[0]
+		q2 = '''
+		select synset, lemma, pos from sense, word where
+		synset=? and pos=? and word.wordid = sense.wordid and word.lang='jpn'
+		'''
+		synset_mates = cursor.execute(q2, (selected_synsetid, pos))
+		X = [ x[1] for x in synset_mates.fetchall() ]
+		Y = [ "%s-%s" % (x, targetpos[args.pos]) for x in X ]
+	except IndexError:
+		Y = [ ]
 	return Y
 	cursor.close()
 	conn_wnj.close()

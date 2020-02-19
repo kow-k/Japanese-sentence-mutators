@@ -43,6 +43,7 @@ import CaboCha
 from gensim.models import word2vec
 from gensim.models import KeyedVectors
 from collections import defaultdict
+import sqlite3
 
 ## Kow Kuroda added the following 17 lines on 2017/02/22, 23
 import io
@@ -192,69 +193,87 @@ def mutate(words, positions):
 	words 中の一語を，活用を保存し指定された語に変異させる
 	arg.try_until の数まで試行する
 	'''
-
-	trial  = 0 # 諦めカウンタ
+	# 変数名の変更: cand => mutant, mutant => cand; positions は位置のリスト
+	try:
+		target = random.choice(positions) # selects target word
+	except IndexError:
+		pass
 	failed = False # 諦めフラグ
-	while True:
-		# 変数名の変更: cand => mutant, mutant => cand; positions は位置のリスト
-		try:
-			target = random.choice(positions) # selects target word
-		except IndexError:
-			break
-		# 格助詞の変異を導入するために条件分枝を導入
-		if targetpos[args.pos] == '格助詞': # 格助詞の変異
-			C = [ x for x in case_markers if x + '-助詞' != words[target] ]
-			if args.debug:
-				print(C)
-			#mutant = random.choice(C)
-			mutant = weighted_random_choice(case_factors, C)
-			mutant += '-助詞'
-			if args.show_similars:
-				print("# " + words[target] + " is replaced by " + mutant + " from:")
-				print("# " + ", ".join(C))
-			# 置換
-			words = replace(words, target, mutant)
-			break
-		else: # 格助詞の他の品詞の変異
-			elem = re.split('-', words[target])
-			query = elem[0] + '-' + elem[1]
-			if re.match('動詞|助動詞|形容詞', elem[1]):
+	# WNJ
+	if args.use_WNJ:
+		elem = re.split('-', words[target])
+		if   posmap[args.pos] == 'N': pos = 'n'
+		elif posmap[args.pos] == 'V': pos = 'v'
+		elif posmap[args.pos] == 'Adj': pos = 'a'
+		else:
+			print("POS specification is invalid: Aborted")
+		candidates = wnj_similars(elem[0], pos)
+		mutant = random.choice(candidates)
+		words[target] = mutant # simple replacement
+		return (words, failed)
+	# Original Distributional Similarity data
+	else:
+		trial  = 0 # 諦めカウンタ
+		while True:
+			# 格助詞の変異を導入するために条件分枝を導入
+			if targetpos[args.pos] == '格助詞': # 格助詞の変異
+				C = [ x for x in case_markers if x + '-助詞' != words[target] ]
+				if args.debug:
+					print(C)
+				mutant = weighted_random_choice(case_factors, C)
+				mutant += '-助詞'
+				if args.show_similars:
+					print("# " + words[target] + " is replaced by " + mutant + " from:")
+					print("# " + ", ".join(C))
+				# 置換
+				words = replace(words, target, mutant)
+				break
+			else: # 格助詞の他の品詞の変異
+				elem = re.split('-', words[target])
+				query = elem[0] + '-' + elem[1]
+				if re.match('動詞|助動詞|形容詞', elem[1]):
+					try:
+						query += '-' + elem[2]
+					except IndexError: pass
+				#
 				try:
-					query += '-' + elem[2]
-				except IndexError: pass
-			try:
-				basecandidates = model.most_similar(positive = [query])
-				#print(basecandidates)
-				# 置換する語と元の語の品詞を一致させる
-				pat = re.compile('-' + elem[1])
-				#candidates = [x for x in basecandidates if pat.search(x[0])]
-				candidates = [ ]
-				for cand in basecandidates:
-					temp = re.split('-', cand[0])
-					# --no-hiragana 有効時，平仮名だけの候補をはじく
-					# (副詞が対象だと置換するものがなくなりそうな予感)
-					if pat.search(cand[0]):
-						if not args.no_hiragana or not is_hira(temp[0]):
-							candidates.append(cand)
-			except KeyError:
-				# 置換しようにも元の語が word2vec のモデルの中にないので
-				# 本当は変異する語の選択からやり直す必要がある
-				# が，今は変異は生成できなかったとあきらめる
-				failed = True; break
-			#print(candidates)
-			#if candidates == [ ]:
+					basecandidates = model.most_similar(positive = [query])
+					if args.debug:
+						print(basecandidates)
+					# 置換する語と元の語の品詞を一致させる
+					pat = re.compile('-' + elem[1])
+					#candidates = [x for x in basecandidates if pat.search(x[0])]
+					candidates = [ ]
+					for cand in basecandidates:
+						temp = re.split('-', cand[0])
+						# --no-hiragana 有効時，平仮名だけの候補をはじく
+						# (副詞が対象だと置換するものがなくなりそうな予感)
+						if pat.search(cand[0]):
+							if not args.no_hiragana or not is_hira(temp[0]):
+								candidates.append(cand)
+				except KeyError:
+					# 置換しようにも元の語が word2vec のモデルの中にないので
+					# 本当は変異する語の選択からやり直す必要がある
+					# が，今は変異は生成できなかったとあきらめる
+					failed = True; break
+			#
+			if args.debug:
+				print("# candidates: %s" % candidates)
 			if len(candidates) == 0:
 				failed = True; break
+			#
 			mutant = random.choice(candidates)
 			if args.debug:
 				print('# mutant: ' + mutant[0])
 			if args.show_similars: # 類似語集合の表示
 				print("# replacement candidate(s): %s" % candidates)
 				print("# " + mutant[0] + " replaced " + words[target])
+			#
 			if args.lb <= mutant[1] and mutant[1] <= args.ub: # 類似度評価
 				# 置換
 				words = replace(words, target, mutant[0])
-				if args.debug: print('# words: %s' % words)
+				if args.debug:
+					print('# words: %s' % words)
 				break
 			# 試行回数の評価
 			trial += 1
@@ -262,8 +281,32 @@ def mutate(words, positions):
 				print("# %d attempts before failure" % trial)
 			if trial >= args.try_until:
 				failed = True; break
-	#
-	return(words, failed)
+		#
+		return (words, failed)
+
+def wnj_similars(word, pos):
+
+	if args.debug:
+		print("# word: %s; pos: %s" % (word, pos))
+	conn_wnj = sqlite3.connect('wnjpn.db')
+	cursor = conn_wnj.cursor()
+	q1 = '''
+	select synset, word.* from word, sense where
+	lemma=? and word.pos=? and word.wordid = sense.wordid
+	'''
+	W = cursor.execute(q1, (word, pos))
+	w = random.choice(W.fetchall()) # use of .fetchall() is crucial
+	selected_synsetid = w[0]
+	q2 = '''
+	select synset, lemma, pos from sense, word where
+	synset=? and pos=? and word.wordid = sense.wordid and word.lang='jpn'
+	'''
+	synset_mates = cursor.execute(q2, (selected_synsetid, pos))
+	X = [ x[1] for x in synset_mates.fetchall() ]
+	Y = [ "%s-%s" % (x, targetpos[args.pos]) for x in X ]
+	return Y
+	cursor.close()
+	conn_wnj.close()
 
 def weighted_random_choice(W, C):
 	'''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
@@ -298,6 +341,7 @@ def replace(words, position, cand):
 		cand += '-' + temp[len(temp) - 1]
 	words[position] = cand
 	return words
+
 
 def reunion(words, inflect):
 	'''
@@ -394,6 +438,7 @@ if __name__ == '__main__':
 	ap.add_argument('--extend_Adv', action = 'store_true', help = '形容詞を副詞扱い')
 	ap.add_argument('--no_hiragana', action = 'store_true', help = '平仮名表記への置換を抑制')
 	ap.add_argument('--inflection', type = argparse.FileType('r', encoding = in_enc), help = '活用語尾リスト (default:katsuyou.csv)', default = 'katsuyou.csv')
+	ap.add_argument('--use_WNJ', action = 'store_true', help = '語の変異で WordNet-J を使う')
 	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
 	ap.add_argument('--commentchar', type = str, help = 'コメント行の識別記号', default = '%')
 	#

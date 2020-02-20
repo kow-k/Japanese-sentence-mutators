@@ -83,7 +83,7 @@ def process(inp, r): # line-wise process
 		t = source; d -= 1
 		morphs = re.split(u'\n', cab.parseToString(t))
 		morphs = [x for x in morphs if not re.match(u'\* ',x)]
-		# 変異する場所の候補を集める
+		# 変異する場所の候補を集める: positions は変異の起きる場所の indices
 		words, positions = prepare_mutation(morphs)
 		if args.debug:
 			print("# words: %s" % words)
@@ -99,21 +99,22 @@ def process(inp, r): # line-wise process
 		result = reunion(mutated_words, inflect)
 		# 結果の表示
 		if failed == True:
-			print('# Mutation failed, making no change')
-		if len(result) <= 0:
-			pass
+			print('# failed, making no mutation(s)')
 		else:
-			if len(header) > 0:
-				if args.nested:
-					text = header + args.headersep + ' ' + result + "[%s change #%d nested]" % (posmap[args.pos], (r - d))
-				else:
-					text = header + args.headersep + ' ' + result + "[%s change #%d]" % (posmap[args.pos], (r - d))
+			if len(result) <= 0:
+				pass
 			else:
-				if args.nested:
-					text = result + "[%s change #%d nested]" % (posmap[args.pos], (r - d))
+				if len(header) > 0:
+					if args.nested:
+						text = header + args.headersep + ' ' + result + "[%s change #%d nested]" % (posmap[args.pos], (r - d))
+					else:
+						text = header + args.headersep + ' ' + result + "[%s change #%d]" % (posmap[args.pos], (r - d))
 				else:
-					text = result + "[%s change #%d]" % (posmap[args.pos], (r - d))
-			print(text)
+					if args.nested:
+						text = result + "[%s change #%d nested]" % (posmap[args.pos], (r - d))
+					else:
+						text = result + "[%s change #%d]" % (posmap[args.pos], (r - d))
+				print(text)
 		# 再帰的変換の条件
 		if args.nested == True:
 			source = result
@@ -194,23 +195,27 @@ def mutate(words, positions):
 	arg.try_until の数まで試行する
 	'''
 	# 変数名の変更: cand => mutant, mutant => cand; positions は位置のリスト
+	failed = False # 諦めフラグ
 	try:
 		target = random.choice(positions) # selects target word
 	except IndexError:
-		pass
-	failed = False # 諦めフラグ
+		failed = True
+	#
+	targeted_word = words[target]
+	print("# trying to mutate %s" % targeted_word)
 	# WNJ
 	if args.use_WNJ:
-		elem = re.split('-', words[target])
 		if   posmap[args.pos] == 'N': pos = 'n'
-		elif posmap[args.pos] == 'V': pos = 'v'
 		elif posmap[args.pos] == 'Adj': pos = 'a'
+		#elif posmap[args.pos] == 'V': pos = 'v'
 		else:
 			print("POS specification is invalid")
+		elem = re.split('-', targeted_word)
 		candidates = wnj_similars(elem[0], pos)
 		try:
 			mutant = random.choice(candidates)
 			words[target] = mutant # simple replacement
+			#words[target] = mutant + targetpos[args.pos] # simple replacement
 		except IndexError:
 			failed = True
 		return (words, failed)
@@ -220,7 +225,7 @@ def mutate(words, positions):
 		while True:
 			# 格助詞の変異を導入するために条件分枝を導入
 			if targetpos[args.pos] == '格助詞': # 格助詞の変異
-				C = [ x for x in case_markers if x + '-助詞' != words[target] ]
+				C = [ x for x in case_markers if x + '-助詞' != targeted_word ]
 				if args.debug:
 					print("# C: %s" % C)
 				mutant = weighted_random_choice(case_factors, C)
@@ -232,7 +237,7 @@ def mutate(words, positions):
 				words = replace(words, target, mutant)
 				break
 			else: # 格助詞の他の品詞の変異
-				elem = re.split('-', words[target])
+				elem = re.split('-', targeted_word)
 				query = elem[0] + '-' + elem[1]
 				if re.match('動詞|助動詞|形容詞', elem[1]):
 					try:
@@ -269,7 +274,7 @@ def mutate(words, positions):
 				print('# mutant: ' + mutant[0])
 			if args.show_similars: # 類似語集合の表示
 				print("# candidates: %s" % candidates)
-				print("# " + mutant[0] + " replaced " + words[target])
+				print("# " + mutant[0] + " replaced " + targeted_word)
 			#
 			# 試行回数の評価
 			trial += 1
@@ -287,32 +292,38 @@ def mutate(words, positions):
 		#
 		return (words, failed)
 
-def wnj_similars(word, pos):
+def wnj_similars(term, pos):
 
 	if args.debug:
-		print("# word: %s; pos: %s" % (word, pos))
-	conn_wnj = sqlite3.connect('wnjpn.db')
-	cursor = conn_wnj.cursor()
+		print("# word: %s; pos: %s" % (term, pos))
+	#
+	wnj_conn = sqlite3.connect('wnjpn.db')
+	wnj_cursor = wnj_conn.cursor()
+	#
 	q1 = '''
-	select synset, word.* from word, sense where
-	lemma=? and word.pos=? and word.wordid = sense.wordid
+	select synset, lemma, pos from word, sense where
+	lemma=? and word.pos=? and word.wordid = sense.wordid and word.lang='jpn'
 	'''
-	W = cursor.execute(q1, (word, pos))
+	senses = wnj_cursor.execute(q1, (term, pos)).fetchall()
+	if args.debug:
+		print(senses)
 	try:
-		w = random.choice(W.fetchall()) # use of .fetchall() is crucial
-		selected_synsetid = w[0]
+		sense = random.choice(senses)
 		q2 = '''
 		select synset, lemma, pos from sense, word where
-		synset=? and pos=? and word.wordid = sense.wordid and word.lang='jpn'
+		synset=? and pos=? and word.wordid=sense.wordid and
+		word.lang='jpn'
 		'''
-		synset_mates = cursor.execute(q2, (selected_synsetid, pos))
-		X = [ x[1] for x in synset_mates.fetchall() ]
-		Y = [ "%s-%s" % (x, targetpos[args.pos]) for x in X ]
+		mates = wnj_cursor.execute(q2, (sense[0], pos)).fetchall()
+		mates = [ mate[1] for mate in mates if mate[1] != term ]
+		if args.debug:
+			print(mates)
+		mates = [ "%s-%s" % (m, targetpos[args.pos]) for m in mates ]
 	except IndexError:
-		Y = [ ]
-	return Y
-	cursor.close()
-	conn_wnj.close()
+		mates = [ ]
+	return mates
+	wnj_cursor.close()
+	wnj_conn.close()
 
 def weighted_random_choice(W, C):
 	'''k個の要素からなるリストLからの無作為抽出を，Wで別に指定する数値 r
@@ -444,7 +455,8 @@ if __name__ == '__main__':
 	ap.add_argument('--extend_Adv', action = 'store_true', help = '形容詞を副詞扱い')
 	ap.add_argument('--no_hiragana', action = 'store_true', help = '平仮名表記への置換を抑制')
 	ap.add_argument('--inflection', type = argparse.FileType('r', encoding = in_enc), help = '活用語尾リスト (default:katsuyou.csv)', default = 'katsuyou.csv')
-	ap.add_argument('--use_WNJ', action = 'store_true', help = '語の変異で WordNet-J を使う')
+	ap.add_argument('--use_WNJ', action = 'store_true', help = '語の変異で WordNet-Ja を使う')
+	ap.add_argument('--use_WNJ_hypernyms', action = 'store_true', help = 'WordNet-Ja の検索で上位語を探す')
 	ap.add_argument('--headersep', type = str, help = 'ヘッダーの区切り記号', default = ':')
 	ap.add_argument('--commentchar', type = str, help = 'コメント行の識別記号', default = '%')
 	#
@@ -458,6 +470,9 @@ if __name__ == '__main__':
 	elif args.extend_Adv == True:
 		args.pos = 3
 		print("pos changed to %s by args.extend_Adv" % posmap[1])
+	if args.use_WNJ_hypernyms == True:
+		args.use_WNJ = True
+
 	# 活用語尾リストの読み込み
 	inflect = defaultdict(lambda:defaultdict(str))
 	for ln in args.inflection:

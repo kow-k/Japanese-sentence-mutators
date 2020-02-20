@@ -123,8 +123,8 @@ Python 3.x で動作する (Python 2.7 では動作しない)．
 
 - --no_hiragana でひらがなのみの語への置換を禁止 (意味の横滑りを抑制に効果がある)．
 
-- 名詞の変異に関してのみ，日本語 WordNet (WordNet-Ja) を使って，同一 synset 内の別の語句に置換する処理を実装 (--use_WNJ オプション)．実行では
-[ダウンロードページ](http://compling.hss.ntu.edu.sg/wnja/jpn/downloads.html) から SQLite3 のデータベースを入手し，changewords.py と同じディレクトリーに置く．
+- 名詞の変異に関してのみ，[日本語 WordNet (WordNet-Ja)](http://compling.hss.ntu.edu.sg/wnja/index.en.html) を使って，同一 synset 内の別の語句に置換する処理を実装 (--use_WNJ オプション)．実行では
+[ダウンロードページ](http://compling.hss.ntu.edu.sg/wnja/jpn/downloads.html) から SQLite3 データベースを入手し，'wnjpn.db' の名で changewords.py と同じディレクトリーに置く．
 ただ，被覆率が (圧倒的に) 低く，変異がほとんど起きないので，期待している程使えない．
 
 ## swapphrases.py

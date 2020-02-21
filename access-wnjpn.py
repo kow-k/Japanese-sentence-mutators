@@ -16,8 +16,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding = out_enc)
 
 ### classes
 
-make_sense = namedtuple('_sense', 'synset, lemma, pos')
-make_link  = namedtuple('_link', 'hypo, hype')
+make_sense = namedtuple('sense', 'synset, lemma, pos')
+make_link  = namedtuple('link', 'hypo, hype')
 
 ### functions
 
@@ -55,9 +55,10 @@ def gather_instances(senses, pos, lang='jpn'):
 
 	W = [ ]
 	for sense in senses:
-		S = get_instances(sense, pos)
-		W.extend(S)
-	return list(set(W))
+		for s in get_instances(sense, pos, lang):
+			if s in W: pass
+			else:      W.append(s)
+	return W
 
 def extract_terms(senses, pos):
 
@@ -67,16 +68,6 @@ def extract_terms(senses, pos):
 		if s in R: pass
 		else: R.append(s)
 	return R
-
-def get_instances_recursively(L, pos, lang='jpn'):
-
-	R = [ ]
-	if len(L) == 0:
-		return [ ]
-	elif len(L) == 1:
-		return R
-	else:
-		return R.extend(get_instances_recursively(L[1:], pos, lang))
 
 def get_links(synset, type):
 
@@ -95,7 +86,7 @@ def get_links(synset, type):
 
 def explore_sense(sense, pos, lang='jpn'):
 
-	print("# picked up sense: %s" % (sense, ))
+	print("# exploring sense: %s" % (sense, ))
 	print("# the sense has synset mates:")
 	L = get_instances(sense, pos)
 	if len(L) > 0:
@@ -132,21 +123,24 @@ def explore_sense(sense, pos, lang='jpn'):
 					j += 1
 					print("# hyponym #%d.%d: %s" % (i, j, term))
 
-def collect_hyposynsets(sense, pos, R, lang='jpn'):
+def collect_hyposynsets(sense, pos, R, depth, lang='jpn'):
 
 	if args.debug:
 		print("# input: %s" % (sense, ))
-	C = get_children(sense, pos)
-	if len(C) > 0:
-		if args.debug:
-			print("# %s has children" % (sense, ))
-		for c in C:
+	#depth = 0
+	while args.depth <= depth:
+		depth -= 1
+		C = get_children(sense, pos)
+		if len(C) > 0:
 			if args.debug:
-				print("# sub sense: %s" % (c, ))
-			R.append(c)
-			return collect_hyposynsets(make_sense(*c), pos, R, lang)
-	else:
-		R.append(sense)
+				print("# %s has children" % (sense, ))
+			for c in C:
+				if args.debug:
+					print("# sub sense: %s" % (c, ))
+				R.append(c)
+				return collect_hyposynsets(make_sense(*c), pos, R, depth, lang)
+		else:
+			R.append(sense)
 	return R
 
 def get_children(sense, pos, lang='jpn'):
@@ -186,6 +180,7 @@ if __name__ == '__main__':
 	parser.add_argument('--hyper', action='store_true', help='shows hypernyms', default=False)
 	parser.add_argument('--hypo', action='store_true', help='shows hyponyms', default=False)
 	parser.add_argument('--collect_hyponyms', action='store_true', help='collect hyponyms of a term and show them', default=False)
+	parser.add_argument('--depth', type=int, help='depth at which to stop search for hypronyms', default=5)
 	parser.add_argument('--index', type=int, help='index for sense to explore')
 	parser.add_argument('--sample', type=int, help='number of sense samples to explore or collect instances')
 	#
@@ -206,8 +201,9 @@ if __name__ == '__main__':
 		#
 		senses = get_senses(term, pos)
 		print("# it has %d senses:" % len(senses) )
-		if args.verbose:
-			for sense in senses: print(sense)
+		if args.debug:
+			for sense in senses:
+				print(sense)
 		# process
 		if args.explore:
 			if args.random:
@@ -228,29 +224,32 @@ if __name__ == '__main__':
 		if args.collect_hyponyms:
 			if args.debug:
 				print("# collecting hyposynsets")
-			dummy = make_sense('00000000-n', 'dummy', 'n')
+			#dummy = make_sense('00000000-n', 'dummy', 'n')
 			if args.sample:
 				senses = random.sample(senses, args.sample)
 			H = [ ]
-			for sense in senses:
-				Hx = collect_hyposynsets(sense, pos, [ ])
+			for i, sense in enumerate(senses):
+				i += 1
+				Hx = collect_hyposynsets(sense, pos, [ ], args.depth)
 				if args.verbose:
-					print("# collected %d hyposynsets of %s:" % (len(Hx), sense))
+					print("# %d/%d collected %d hyposynset(s) of %s:" % (i, len(senses), len(Hx), sense))
 					print(Hx)
 				# make a unique list
 				for s in Hx:
 					if s in H: pass
 					else:      H.append(s)
 			#
-			print("# collected hyposynsets:")
 			pprint(H)
+			print("# collected %d hyposynsets" % len(H))
 			#
 			print("# gathered hyponyms:")
 			G = gather_instances(H, pos)
 			G.extend(H) # Don't do X = G.extend(H) which doesn't work
-			if args.debug:
-				pprint(G)
-			pprint(extract_terms(G, pos))
+			if args.verbose:
+				pprint(sorted(G))
+			print("# terms only:")
+			pprint(sorted(extract_terms(G, pos)))
+			print("# %d items" % len(G))
 
 	except EOFError:
 		pass

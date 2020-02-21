@@ -182,15 +182,19 @@ if __name__ == '__main__':
 	parser.add_argument('--random', action='store_true', help='enables random choice', default=False)
 	parser.add_argument('--term', type=str, help='term for lookup', default='見本')
 	parser.add_argument('--pos', type=str, help='pos (n, v, a) for term lookup', default='n')
+	parser.add_argument('--explore', action='store_true', help='explores senses', default=False)
 	parser.add_argument('--hyper', action='store_true', help='shows hypernyms', default=False)
 	parser.add_argument('--hypo', action='store_true', help='shows hyponyms', default=False)
+	parser.add_argument('--collect_hyponyms', action='store_true', help='collect hyponyms of a term and show them', default=False)
 	parser.add_argument('--index', type=int, help='index for sense to explore')
-	parser.add_argument('--sample', type=int, help='number of sense samples to explore')
-
+	parser.add_argument('--sample', type=int, help='number of sense samples to explore or collect instances')
 	#
 	args = parser.parse_args()
-   #
+
+   # implications
 	try:
+		if args.debug:
+			args.verbose = True
 		if args.debug:
 			print("encoding: %s" % sys.getdefaultencoding())
 		#
@@ -198,56 +202,55 @@ if __name__ == '__main__':
 		cursor = conn.cursor()
 		#
 		term, pos = args.term, args.pos
-		#S = get_senses(args.term, args.pos)
-		#print(S[0])
-		#s = make_sense(*S[0]) # *arg is necessary
-		#print(s)
-		#senses = [ ]
-		#for s in S: senses.append(make_sense(*s))
 		print("# processing: %s, %s" % (term, pos))
 		#
 		senses = get_senses(term, pos)
 		print("# it has %d senses:" % len(senses) )
 		if args.verbose:
-			for sense in senses:
-				print(sense)
+			for sense in senses: print(sense)
+		# process
+		if args.explore:
+			if args.random:
+				chosen_sense = random.choice(senses)
+				explore_sense(chosen_sense, pos)
+			elif args.index:
+				explore_sense(senses[args.index - 1], pos)
+			else:
+				if args.sample:
+					senses = random.sample(senses, args.sample)
+				for i, sense in enumerate(senses):
+					i += 1
+					print("# sampled sense #%d" % (i, ))
+					explore_sense(sense, pos)
+					print("# has children: %s" % (has_children(sense, pos), ))
+
 		#
-		if args.random:
-			chosen_sense = random.choice(senses)
-			explore_sense(chosen_sense, pos)
-		elif args.index:
-			explore_sense(senses[args.index - 1], pos)
-		elif args.sample:
-			for i, sense in enumerate(random.sample(senses, args.sample)):
-				i += 1
-				print("# sampled sense #%d" % (i, ))
-				explore_sense(sense, pos)
-				print("# has children: %s" % (has_children(sense, pos), ))
-		else:
-			for sense in senses:
-				explore_sense(sense, pos)
-		#
-		print("# collecting hyposynsets")
-		dummy = make_sense('00000000-n', 'dummy', 'n')
-		H = [ ]
-		for sample_sense in random.sample(senses, args.sample):
-			Hx = collect_hyposynsets(sample_sense, pos, [ ])
+		if args.collect_hyponyms:
 			if args.debug:
-				print("# collected %d hyposynsets of %s:" % (len(Hx), sample_sense))
-				print(Hx)
-			# make a unique list
-			for sense in Hx:
-				if sense in H:
-					pass
-				else:
-					H.append(sense)
-		pprint(H)
-		#
-		print("# showing gathered hyponyms:")
-		G = gather_instances(H, pos)
-		G.extend(H) # Don't do X = G.extend(H) which doesn't work
-		#pprint(G)
-		print(extract_terms(G, pos))
+				print("# collecting hyposynsets")
+			dummy = make_sense('00000000-n', 'dummy', 'n')
+			if args.sample:
+				senses = random.sample(senses, args.sample)
+			H = [ ]
+			for sense in senses:
+				Hx = collect_hyposynsets(sense, pos, [ ])
+				if args.verbose:
+					print("# collected %d hyposynsets of %s:" % (len(Hx), sense))
+					print(Hx)
+				# make a unique list
+				for s in Hx:
+					if s in H: pass
+					else:      H.append(s)
+			#
+			print("# collected hyposynsets:")
+			pprint(H)
+			#
+			print("# gathered hyponyms:")
+			G = gather_instances(H, pos)
+			G.extend(H) # Don't do X = G.extend(H) which doesn't work
+			if args.debug:
+				pprint(G)
+			pprint(extract_terms(G, pos))
 
 	except EOFError:
 		pass

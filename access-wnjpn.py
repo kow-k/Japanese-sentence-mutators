@@ -29,6 +29,51 @@ make_link  = namedtuple('link', 'hypo, hype')
 # 	except IOError as e:
 # 		pass
 
+
+def get_origins(sense, pos, lang='jpn'):
+
+	as_Hypos = get_links(sense, 'hype')
+	#pprint(as_Hypos)
+	Hypo_origins = [ sense.hypo for sense in as_Hypos ]
+	return Hypo_origins
+	#pprint(Hypo_origins)
+	#as_Hypers = get_links(sense, 'hypo')
+	#pprint(as_Hypers)
+	#R = [ ]
+	#for link in as_Hypers:
+	#	if link.hype in Hypo_origins:
+	#		R.append(link)
+	#		#pass
+	#	else:
+	#		#R.append(link)
+	#		pass
+	#R.extend(as_Hypos)
+	#assert len(Hyper_origins) >= len(Hypo_origins)
+	#return set(Hyper_origins) | set(Hypo_origins)
+	#return R
+
+def get_hyperlinks(sense):
+
+	q = '''
+	select synset1, synset2 from synlink where synset2=? and link=?
+	'''
+	return cursor.execute(q, (sense.synset, 'hype')).fetchall()
+
+def get_hypolinks(sense):
+
+	q = '''
+	select synset1, synset2 from synlink where synset1=? and link=?
+	'''
+	return cursor.execute(q, (sense.synset, 'hype')).fetchall()
+
+def is_hypernym(sense, pos, lang='jpn'):
+
+	pass
+
+def is_hyponym(sense, pos, lang='jpn'):
+
+	pass
+
 def get_senses(term, pos, lang='jpn'):
 
 	q = '''
@@ -42,14 +87,23 @@ def get_senses(term, pos, lang='jpn'):
 	#for s in S: R.append(make_sense(*s))
 	return [ make_sense(*s) for s in S ]
 
+def instantiate(synset, pos, lang='jpn'):
+
+	q = '''
+	select synset, lemma, pos from sense, word where
+	synset=? and word.pos=? and word.lang=? and sense.wordid=word.wordid
+	'''
+	R = cursor.execute(q, (synset, pos, lang)).fetchall()
+	return [ make_sense(*r) for r in list(set(R)) ]
+
 def get_instances(sense, pos, lang='jpn'):
 
 	q = '''
 	select synset, lemma, pos from sense, word where
-	synset=? and word.pos=? and word.lang=? and word.wordid=sense.wordid
+	synset=? and word.pos=? and word.lang=? and sense.wordid=word.wordid
 	'''
 	R = cursor.execute(q, (sense.synset, pos, lang)).fetchall()
-	return [ make_sense(*r) for r in R ]
+	return [ make_sense(*r) for r in list(set(R)) ]
 
 def gather_instances(senses, pos, lang='jpn'):
 
@@ -69,20 +123,22 @@ def extract_terms(senses, pos):
 		else: R.append(s)
 	return R
 
-def get_links(synset, type):
+def get_links(sense, type):
 
-	if type == 'hypo':
-		q = '''
-		select synset1, synset2 from synlink where synset2=? and link=?
-		'''
-		R = cursor.execute(q, (synset, 'hype'))
-		return [ make_link(*r) for r in R.fetchall() ]
-	elif type == 'hype':
+	if type == 'hype':
 		q = '''
 		select synset1, synset2 from synlink where synset1=? and link=?
 		'''
-		R = cursor.execute(q, (synset, 'hype'))
+		R = cursor.execute(q, (sense.synset, 'hype'))
 		return [ make_link(*r) for r in R.fetchall() ]
+	elif type == 'hypo':
+		q = '''
+		select synset1, synset2 from synlink where synset2=? and link=?
+		'''
+		R = cursor.execute(q, (sense.synset, 'hype'))
+		return [ make_link(*r) for r in R.fetchall() ]
+	else:
+		pass
 
 def explore_sense(sense, pos, lang='jpn'):
 
@@ -250,6 +306,18 @@ if __name__ == '__main__':
 			print("# terms only:")
 			pprint(sorted(extract_terms(G, pos)))
 			print("# %d items" % len(G))
+		#
+		O = [ ]
+		for sense in random.sample(senses, args.sample):
+			print(sense)
+			for o in get_origins(sense, pos):
+				if o in O:
+					pass
+				else:
+					O.append(o)
+		print(O)
+		for i, o in enumerate(O):
+			print("sense %d members: %s" % (i + 1, instantiate(o, pos)))
 
 	except EOFError:
 		pass
